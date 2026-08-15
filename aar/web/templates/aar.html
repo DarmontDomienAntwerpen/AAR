@@ -7,25 +7,25 @@
 
 <div class="flex items-center justify-between mb-6">
   <div>
-    <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Interactieve AAR</h1>
-    <p class="mt-1 text-sm text-slate-500">{{ incident.location }} &middot; {{ incident.date|nl_date }}</p>
+    <h1 class="text-[22px] font-bold text-ink-900 tracking-[-0.01em]">Interactieve AAR</h1>
+    <p class="mt-1 text-[13px] text-slate-500">{{ incident.location }} &middot; {{ incident.date|nl_date }}</p>
   </div>
   <a href="/incidents/{{ incident.id }}/final"
-     class="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-700 transition">
-    Definitieve AAR {{ icons.icon('arrow-right', 'w-4 h-4') }}
+     class="inline-flex items-center gap-1.5 rounded-md bg-ink-900 px-3.5 py-2 text-[13px] font-semibold text-white shadow-sm hover:bg-ink-800 transition">
+    Definitieve AAR {{ icons.icon('arrow-right', 'w-3.5 h-3.5') }}
   </a>
 </div>
 
-<div class="border-b border-slate-200 mb-8">
+<div class="border-b border-slate-200 mb-7">
   <nav class="flex gap-6 -mb-px">
     {% for key, label in [("overzicht","Overzicht"), ("verloop","Incidentverloop"), ("bespreken","Te bespreken"), ("positief","Positieve punten"), ("leerpunten","Leerpunten")] %}
     <a href="/incidents/{{ incident.id }}/aar?tab={{ key }}"
-       class="border-b-2 pb-3 text-sm font-medium transition
-              {{ 'border-brand-600 text-brand-700' if tab == key else 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300' }}">
+       class="border-b-2 pb-2.5 text-[13px] font-medium transition
+              {{ 'border-ink-900 text-ink-900' if tab == key else 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300' }}">
       {{ label }}
-      {% if key == "bespreken" and discussion_points %}<span class="ml-1 text-xs text-slate-400">{{ discussion_points|length }}</span>{% endif %}
-      {% if key == "positief" and positive_findings %}<span class="ml-1 text-xs text-slate-400">{{ positive_findings|length }}</span>{% endif %}
-      {% if key == "leerpunten" and lessons %}<span class="ml-1 text-xs text-slate-400">{{ lessons|length }}</span>{% endif %}
+      {% if key == "bespreken" and discussion_points %}<span class="ml-1 text-[11px] text-slate-400 tabular">{{ discussion_points|length }}</span>{% endif %}
+      {% if key == "positief" and positive_findings %}<span class="ml-1 text-[11px] text-slate-400 tabular">{{ positive_findings|length }}</span>{% endif %}
+      {% if key == "leerpunten" and lessons %}<span class="ml-1 text-[11px] text-slate-400 tabular">{{ lessons|length }}</span>{% endif %}
     </a>
     {% endfor %}
   </nav>

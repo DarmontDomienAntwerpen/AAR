@@ -1,36 +1,58 @@
 {% import "_icons.html" as icons %}
 
-<div class="grid grid-cols-3 gap-6">
-  <div class="col-span-2 space-y-6">
-    <div class="rounded-2xl border border-slate-200 bg-white p-6">
-      <h2 class="font-semibold text-slate-900 mb-4">Incidentgegevens</h2>
-      <dl class="grid grid-cols-2 gap-4 text-sm">
-        <div><dt class="text-slate-400">Datum</dt><dd class="mt-0.5 font-medium text-slate-800">{{ incident.date|nl_date }}</dd></div>
-        <div><dt class="text-slate-400">Type</dt><dd class="mt-0.5 font-medium text-slate-800">{{ incident.incident_type.value }}</dd></div>
-        <div class="col-span-2"><dt class="text-slate-400">Locatie</dt><dd class="mt-0.5 font-medium text-slate-800">{{ incident.location }}</dd></div>
+<div class="grid grid-cols-3 gap-5">
+  <div class="col-span-2 space-y-5">
+    <div class="rounded-lg border border-slate-200 bg-white p-5">
+      <h2 class="text-[13px] font-semibold text-ink-900 mb-3.5">Incidentgegevens</h2>
+      <dl class="grid grid-cols-2 gap-3.5 text-[13px]">
+        <div><dt class="text-[11px] uppercase tracking-wide text-slate-400">Datum</dt><dd class="mt-0.5 font-medium text-slate-800 tabular">{{ incident.date|nl_date }}</dd></div>
+        <div><dt class="text-[11px] uppercase tracking-wide text-slate-400">Type</dt><dd class="mt-0.5 font-medium text-slate-800">{{ incident.incident_type.value }}</dd></div>
+        <div class="col-span-2"><dt class="text-[11px] uppercase tracking-wide text-slate-400">Locatie</dt><dd class="mt-0.5 font-medium text-slate-800">{{ incident.location }}</dd></div>
         {% if incident.description %}
-        <div class="col-span-2"><dt class="text-slate-400">Omschrijving</dt><dd class="mt-0.5 text-slate-600">{{ incident.description }}</dd></div>
+        <div class="col-span-2"><dt class="text-[11px] uppercase tracking-wide text-slate-400">Omschrijving</dt><dd class="mt-0.5 text-slate-600">{{ incident.description }}</dd></div>
         {% endif %}
       </dl>
     </div>
 
-    <div class="rounded-2xl border border-slate-200 bg-white p-6">
-      <h2 class="font-semibold text-slate-900 mb-4">Situatiesamenvatting</h2>
+    <div class="rounded-lg border border-slate-200 bg-white overflow-hidden">
+      <h2 class="text-[13px] font-semibold text-ink-900 px-5 pt-4 pb-3">Betrokken commandanten</h2>
+      {% if not commander_reports %}
+      <p class="px-5 pb-4 text-[12.5px] text-slate-500">Geen verslagen gekoppeld.</p>
+      {% else %}
+      <div class="grid grid-cols-[90px_1fr_1fr_120px] gap-3 px-5 py-2 text-[10.5px] font-medium uppercase tracking-wide text-slate-400 border-y border-slate-100 bg-slate-50/60">
+        <div>Callsign</div>
+        <div>Eenheid</div>
+        <div>Naam</div>
+        <div>Doel bereikt</div>
+      </div>
+      {% for report in commander_reports %}
+      <div class="grid grid-cols-[90px_1fr_1fr_120px] gap-3 px-5 py-2.5 text-[12.5px] border-b border-slate-50 last:border-0">
+        <div class="font-mono font-semibold text-ink-900">{{ report.callsign or "—" }}</div>
+        <div class="text-slate-600 truncate">{{ report.unit_name or "—" }}</div>
+        <div class="text-slate-600 truncate">{{ report.rank }} {{ report.surname }}</div>
+        <div class="text-slate-500">{{ report.objective_achieved.value if report.objective_achieved else "—" }}</div>
+      </div>
+      {% endfor %}
+      {% endif %}
+    </div>
+
+    <div class="rounded-lg border border-slate-200 bg-white p-5">
+      <h2 class="text-[13px] font-semibold text-ink-900 mb-3.5">Situatiesamenvatting</h2>
       <form method="post" action="/incidents/{{ incident.id }}/aar/situation-summary">
         <textarea name="text" rows="6"
-                  class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500">{{ default_summary }}</textarea>
-        <button type="submit" class="mt-3 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition">
+                  class="w-full rounded-md border border-slate-300 px-3 py-2.5 text-[13px] leading-relaxed focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500">{{ default_summary }}</textarea>
+        <button type="submit" class="mt-3 rounded-md bg-ink-900 px-3.5 py-2 text-[13px] font-semibold text-white hover:bg-ink-800 transition">
           Samenvatting opslaan
         </button>
       </form>
     </div>
 
     {% if photos %}
-    <div class="rounded-2xl border border-slate-200 bg-white p-6">
-      <h2 class="font-semibold text-slate-900 mb-4">Beeldmateriaal</h2>
+    <div class="rounded-lg border border-slate-200 bg-white p-5">
+      <h2 class="text-[13px] font-semibold text-ink-900 mb-3.5">Beeldmateriaal</h2>
       <div class="grid grid-cols-4 gap-3">
         {% for photo in photos %}
-        <a href="/incidents/{{ incident.id }}/media/{{ photo.id }}" target="_blank" class="block rounded-lg overflow-hidden border border-slate-200 group">
+        <a href="/incidents/{{ incident.id }}/media/{{ photo.id }}" target="_blank" class="block rounded-md overflow-hidden border border-slate-200 group">
           {% if photo.original_filename.lower().endswith(('.jpg', '.jpeg', '.png', '.webp')) %}
           <img src="/incidents/{{ incident.id }}/media/{{ photo.id }}" alt="{{ photo.caption or photo.original_filename }}"
                class="w-full h-24 object-cover bg-slate-100 group-hover:opacity-90 transition">
@@ -40,7 +62,7 @@
           </div>
           {% endif %}
           {% if photo.caption %}
-          <div class="px-2 py-1.5 text-xs text-slate-500 truncate">{{ photo.caption }}</div>
+          <div class="px-2 py-1.5 text-[11px] text-slate-500 truncate">{{ photo.caption }}</div>
           {% endif %}
         </a>
         {% endfor %}
@@ -49,27 +71,27 @@
     {% endif %}
   </div>
 
-  <div class="space-y-6">
+  <div class="space-y-5">
     {% if timed_events %}
-    <div class="rounded-2xl border border-slate-200 bg-white p-6">
-      <h2 class="font-semibold text-slate-900 mb-4">Belangrijke tijdstippen</h2>
-      <ul class="space-y-3">
+    <div class="rounded-lg border border-slate-200 bg-white p-5">
+      <h2 class="text-[13px] font-semibold text-ink-900 mb-3.5">Belangrijke tijdstippen</h2>
+      <ul class="space-y-2.5">
         {% for e in timed_events %}
-        <li class="flex items-start gap-3">
-          <span class="mt-0.5 shrink-0 rounded-md bg-slate-100 px-2 py-0.5 text-xs font-mono font-semibold text-slate-700">{{ e.exact_time|nl_time }}</span>
-          <span class="text-sm text-slate-700">{{ e.title }}</span>
+        <li class="flex items-start gap-2.5">
+          <span class="mt-0.5 shrink-0 rounded bg-ink-100 px-1.5 py-[3px] text-[11px] font-mono font-semibold text-ink-700 tabular">{{ e.exact_time|nl_time }}</span>
+          <span class="text-[12.5px] text-slate-700">{{ e.title }}</span>
         </li>
         {% endfor %}
       </ul>
     </div>
     {% endif %}
 
-    <div class="rounded-2xl border border-slate-200 bg-white p-6">
-      <h2 class="font-semibold text-slate-900 mb-2">Heranalyse</h2>
-      <p class="text-xs text-slate-500 mb-4">Voer dit uit nadat u correcties heeft toegevoegd, zodat de AI-analyse hiermee rekening houdt.</p>
+    <div class="rounded-lg border border-slate-200 bg-white p-5">
+      <h2 class="text-[13px] font-semibold text-ink-900 mb-1.5">Heranalyse</h2>
+      <p class="text-[11.5px] text-slate-500 mb-3.5">Voer dit uit nadat u correcties heeft toegevoegd, zodat de AI-analyse hiermee rekening houdt.</p>
       <form method="post" action="/incidents/{{ incident.id }}/aar/reanalyze">
-        <button type="submit" class="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition">
-          {{ icons.icon('sparkle', 'w-4 h-4') }}
+        <button type="submit" class="w-full inline-flex items-center justify-center gap-1.5 rounded-md border border-slate-300 px-3.5 py-2 text-[13px] font-semibold text-slate-700 hover:bg-slate-50 transition">
+          {{ icons.icon('sparkle', 'w-3.5 h-3.5') }}
           Analyse opnieuw uitvoeren
         </button>
       </form>

@@ -76,6 +76,7 @@ def build_findings_payload(session: Session, incident: Incident) -> dict:
             {
                 "id": o.id,
                 "commander_report_id": o.commander_report_id,
+                "attributed_to": o.attributed_to,
                 "observation_type": o.observation_type.value,
                 "category": o.category.value,
                 "content": o.content,

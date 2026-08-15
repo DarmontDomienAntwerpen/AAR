@@ -8,7 +8,7 @@ from pathlib import Path
 
 from fastapi.templating import Jinja2Templates
 
-from aar.models.enums import IncidentStatus, IncidentType
+from aar.models.enums import DiscussionOrigin, IncidentStatus, IncidentType
 from aar.ui.labels import CONFIDENCE_STATE_LABELS_NL, DISCUSSION_ORIGIN_LABELS_NL, OBSERVATION_TYPE_LABELS_NL
 
 TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
@@ -43,20 +43,36 @@ STATUS_LABELS_NL = {
 }
 
 STATUS_BADGE_CLASSES = {
-    IncidentStatus.DRAFT: "bg-slate-100 text-slate-600",
+    IncidentStatus.DRAFT: "bg-ink-100 text-ink-600",
     IncidentStatus.SOURCES_UPLOADED: "bg-sky-50 text-sky-700",
     IncidentStatus.ANALYZED: "bg-amber-50 text-amber-700",
-    IncidentStatus.IN_REVIEW: "bg-indigo-50 text-indigo-700",
+    IncidentStatus.IN_REVIEW: "bg-accent-100 text-accent-700",
     IncidentStatus.FINALIZED: "bg-emerald-50 text-emerald-700",
 }
 
 
+ORIGIN_BORDER_CLASSES = {
+    DiscussionOrigin.UNCERTAINTY: "border-l-amber-400",
+    DiscussionOrigin.ASSUMPTION: "border-l-amber-400",
+    DiscussionOrigin.CONFLICT: "border-l-rose-400",
+    DiscussionOrigin.GOAL_NOT_ACHIEVED: "border-l-rose-400",
+    DiscussionOrigin.UNEXPECTED_RESULT: "border-l-rose-300",
+    DiscussionOrigin.COORDINATION_ISSUE: "border-l-amber-400",
+    DiscussionOrigin.COMMUNICATION_ISSUE: "border-l-amber-400",
+    DiscussionOrigin.SUCCESSFUL_PRACTICE: "border-l-emerald-400",
+    DiscussionOrigin.PATTERN: "border-l-accent-400",
+    DiscussionOrigin.UNEXPLAINED_DECISION: "border-l-rose-300",
+    DiscussionOrigin.MISSING_INFORMATION: "border-l-amber-300",
+    DiscussionOrigin.OTHER: "border-l-slate-300",
+}
+
+templates.env.globals["origin_border_class"] = lambda o: ORIGIN_BORDER_CLASSES.get(o, "border-l-slate-300")
 templates.env.filters["nl_date"] = _fmt_date
 templates.env.filters["nl_time"] = _fmt_time
 templates.env.filters["nl_datetime"] = _fmt_datetime
 templates.env.globals["IncidentType"] = IncidentType
 templates.env.globals["status_label"] = lambda s: STATUS_LABELS_NL.get(s, getattr(s, "value", str(s)))
-templates.env.globals["status_badge_class"] = lambda s: STATUS_BADGE_CLASSES.get(s, "bg-slate-100 text-slate-600")
+templates.env.globals["status_badge_class"] = lambda s: STATUS_BADGE_CLASSES.get(s, "bg-ink-100 text-ink-600")
 templates.env.globals["origin_label"] = lambda o: DISCUSSION_ORIGIN_LABELS_NL.get(o, getattr(o, "value", str(o)))
 templates.env.globals["confidence_label"] = lambda c: CONFIDENCE_STATE_LABELS_NL.get(c, getattr(c, "value", str(c)))
 templates.env.globals["observation_type_label"] = lambda t: OBSERVATION_TYPE_LABELS_NL.get(t, getattr(t, "value", str(t)))

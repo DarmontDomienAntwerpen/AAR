@@ -6,9 +6,27 @@ dispatch record's description is strong and unambiguous. This is a
 conservative heuristic, not semantic understanding — when in doubt it leaves
 `exact_time` unset, per the absolute-time rule (spec §22): a missed match is
 acceptable, a wrong or invented one is not.
+
+Matching deliberately uses only the event's *title* — never the free-text
+`ai_summary`, and not `involved_units`/`involved_commanders` either (those
+are proper nouns/names that pad the word count without ever genuinely
+matching dispatch phrasing, which only weakens the overlap ratio below).
+`ai_summary` can be an arbitrarily long paragraph of real quoted report
+content, and generic fire-incident vocabulary ("verdieping", "brand", "rook")
+recurs across totally unrelated moments, so a long summary will trivially
+share words with almost any dispatch row by chance. The title is short and
+specific by construction, so it stays a meaningful, low-noise signal
+regardless of how rich the displayed summary text is — what's shown to the
+facilitator and what's used for matching are intentionally different things.
+
+The overlap requirement is a ratio of the *shorter* side's word count (title
+text is usually only 1-3 significant words, so a requirement sized off the
+dispatch row alone would be unreachable) — most of whichever side has less
+vocabulary must be accounted for, which stays strict in both directions.
 """
 from __future__ import annotations
 
+import math
 import re
 
 from sqlalchemy.orm import Session
@@ -26,6 +44,7 @@ _STOPWORDS = {
 }
 _WORD_RE = re.compile(r"[a-zà-ÿ0-9]+", re.IGNORECASE)
 _MIN_SHARED_WORDS = 2
+_MIN_OVERLAP_RATIO = 0.66  # fraction of the *shorter* side's significant words
 
 
 def _significant_words(text: str) -> set[str]:
@@ -34,10 +53,7 @@ def _significant_words(text: str) -> set[str]:
 
 
 def _event_text(event: IncidentEvent) -> str:
-    parts = [event.title, event.ai_summary]
-    parts.extend(event.involved_units or [])
-    parts.extend(event.involved_commanders or [])
-    return " ".join(p for p in parts if p)
+    return event.title or ""
 
 
 def enrich_with_dispatch_times(session: Session, incident: Incident) -> int:
@@ -70,8 +86,12 @@ def enrich_with_dispatch_times(session: Session, incident: Incident) -> int:
 
         scored = []
         for record, words in record_words:
+            if not words:
+                continue
             overlap = event_words & words
-            if len(overlap) >= _MIN_SHARED_WORDS:
+            shorter_side = min(len(event_words), len(words))
+            required = max(_MIN_SHARED_WORDS, math.ceil(shorter_side * _MIN_OVERLAP_RATIO))
+            if len(overlap) >= required:
                 scored.append((len(overlap), record))
 
         if not scored:

@@ -4,6 +4,7 @@ __pycache__/
 .env
 data/*.db
 data/uploads/
+data/.session_secret
 .pytest_cache/
 .DS_Store
 *.egg-info/

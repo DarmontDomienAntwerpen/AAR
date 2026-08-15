@@ -32,7 +32,7 @@ def test_enrich_attaches_time_on_clear_match(session, sample_incident):
     session.add(record)
     event = IncidentEvent(
         incident_id=sample_incident.id,
-        title="Escalatie",
+        title="Escalatie brand pand",
         order_index=0,
         ai_summary="Escalatie van de brand in het pand gemeld door meerdere commandanten.",
     )
@@ -100,9 +100,46 @@ def test_enrich_leaves_unset_on_ambiguous_tie(session, sample_incident):
     )
     event = IncidentEvent(
         incident_id=sample_incident.id,
-        title="Escalatie",
+        title="Escalatie brand pand",
         order_index=0,
         ai_summary="Escalatie van de brand in het pand.",
+    )
+    session.add(event)
+    session.commit()
+
+    enriched = enrich_with_dispatch_times(session, sample_incident)
+    session.refresh(event)
+
+    assert enriched == 0
+    assert event.exact_time is None
+
+
+def test_enrich_ignores_generic_overlap_in_long_ai_summary(session, sample_incident):
+    """Regression guard: a long, richly-worded ai_summary (real quoted report
+    content, as the mock/a real LLM would produce) must not cause a match on
+    its own just because generic incident vocabulary happens to overlap with
+    a dispatch row — matching is title-only precisely to prevent this."""
+    doc = _make_dispatch_doc(session, sample_incident)
+    session.add(
+        DispatchRecord(
+            incident_id=sample_incident.id,
+            source_document_id=doc.id,
+            row_index=2,
+            timestamp=dt.datetime(2026, 3, 4, 14, 19),
+            event_description="Slachtoffer aangetroffen eerste verdieping",
+            is_valid=True,
+        )
+    )
+    event = IncidentEvent(
+        incident_id=sample_incident.id,
+        title="Wat ging minder goed",
+        order_index=0,
+        ai_summary=(
+            "De controle van de eerste verdieping gebeurde later dan gewenst. "
+            "Er was aanvankelijk onvoldoende zicht op de toestand van de eerste "
+            "verdieping vanaf de buitenzijde, en het slachtoffer werd daardoor "
+            "pas laat aangetroffen door de zoekploeg."
+        ),
     )
     session.add(event)
     session.commit()

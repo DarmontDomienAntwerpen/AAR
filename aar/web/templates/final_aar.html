@@ -4,40 +4,40 @@
 {% block title %}Definitieve AAR{% endblock %}
 {% block content %}
 
-<div class="flex items-center justify-between mb-8">
+<div class="flex items-center justify-between mb-7">
   <div>
-    <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Definitieve AAR</h1>
-    <p class="mt-1 text-sm text-slate-500">{{ incident.location }} &middot; {{ incident.date|nl_date }} &middot; {{ incident.incident_type.value }}</p>
+    <h1 class="text-[22px] font-bold text-ink-900 tracking-[-0.01em]">Definitieve AAR</h1>
+    <p class="mt-1 text-[13px] text-slate-500">{{ incident.location }} &middot; {{ incident.date|nl_date }} &middot; {{ incident.incident_type.value }}</p>
   </div>
   {% if incident.status.value == "finalized" %}
-  <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-700">
-    {{ icons.icon('check-circle', 'w-4 h-4') }} Afgerond
+  <span class="inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-[12.5px] font-semibold bg-emerald-50 text-emerald-700">
+    {{ icons.icon('check-circle', 'w-3.5 h-3.5') }} Afgerond
   </span>
   {% else %}
   <form method="post" action="/incidents/{{ incident.id }}/final/finalize">
-    <button type="submit" class="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-700 transition">
+    <button type="submit" class="inline-flex items-center gap-1.5 rounded-md bg-ink-900 px-3.5 py-2 text-[13px] font-semibold text-white shadow-sm hover:bg-ink-800 transition">
       Markeer als afgerond
     </button>
   </form>
   {% endif %}
 </div>
 
-<div class="space-y-8 max-w-3xl">
+<div class="space-y-7 max-w-3xl">
   <section>
-    <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-400 mb-3">Situatie</h2>
-    <div class="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-700 whitespace-pre-line">
+    <h2 class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2.5">Situatie</h2>
+    <div class="rounded-lg border border-slate-200 bg-white p-5 text-[13px] leading-relaxed text-slate-700 whitespace-pre-line">
       {{ situation_summary or "—" }}
     </div>
   </section>
 
   {% if timed_events %}
   <section>
-    <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-400 mb-3">Belangrijke tijdstippen</h2>
-    <div class="rounded-2xl border border-slate-200 bg-white p-6">
+    <h2 class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2.5">Belangrijke tijdstippen</h2>
+    <div class="rounded-lg border border-slate-200 bg-white p-5">
       <ul class="space-y-2.5">
         {% for e in timed_events %}
-        <li class="flex items-center gap-3 text-sm">
-          <span class="rounded-md bg-slate-100 px-2 py-0.5 font-mono text-xs font-semibold text-slate-700">{{ e.exact_time|nl_time }}</span>
+        <li class="flex items-center gap-3 text-[13px]">
+          <span class="rounded bg-ink-100 px-1.5 py-[3px] font-mono text-[11.5px] font-semibold text-ink-700 tabular">{{ e.exact_time|nl_time }}</span>
           <span class="text-slate-700">{{ e.title }}</span>
         </li>
         {% endfor %}
@@ -47,20 +47,20 @@
   {% endif %}
 
   <section>
-    <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-400 mb-3">Incidentverloop</h2>
+    <h2 class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2.5">Incidentverloop</h2>
     {% if not events %}
       {{ c.empty_state("Geen incidentmomenten beschikbaar.") }}
     {% else %}
-    <div class="rounded-2xl border border-slate-200 bg-white divide-y divide-slate-100">
+    <div class="rounded-lg border border-slate-200 bg-white divide-y divide-slate-100">
       {% for e in events %}
-      <div class="p-5">
+      <div class="p-4">
         <div class="flex items-center gap-2 mb-1">
-          <span class="text-xs font-mono font-semibold text-slate-400">
+          <span class="text-[11px] font-mono font-semibold text-slate-400 tabular">
             {{ e.exact_time|nl_time if e.exact_time else ("ca. " ~ e.approx_time_text if e.approx_time_text else "geen tijdstip") }}
           </span>
-          <span class="font-semibold text-slate-900 text-sm">{{ e.title }}</span>
+          <span class="font-semibold text-ink-900 text-[13px]">{{ e.title }}</span>
         </div>
-        <p class="text-sm text-slate-600">{{ e.ai_summary }}</p>
+        <p class="text-[13px] text-slate-600 leading-relaxed">{{ e.ai_summary }}</p>
       </div>
       {% endfor %}
     </div>
@@ -68,14 +68,14 @@
   </section>
 
   <section>
-    <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-400 mb-3">Wat ging goed</h2>
+    <h2 class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2.5">Wat ging goed</h2>
     {% if not positive_findings %}
       {{ c.empty_state("Geen positieve punten geregistreerd.") }}
     {% else %}
-    <ul class="space-y-2">
+    <ul class="space-y-1.5">
       {% for pf in positive_findings %}
-      <li class="rounded-xl border border-emerald-100 bg-emerald-50/50 px-4 py-3 text-sm">
-        <span class="font-semibold text-slate-900">{{ pf.title }}</span>
+      <li class="rounded-lg border border-emerald-100 bg-emerald-50/60 px-4 py-2.5 text-[13px]">
+        <span class="font-semibold text-ink-900">{{ pf.title }}</span>
         <span class="text-slate-600"> — {{ pf.description }}</span>
       </li>
       {% endfor %}
@@ -84,14 +84,14 @@
   </section>
 
   <section>
-    <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-400 mb-3">Wat ging minder goed / te bespreken</h2>
+    <h2 class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2.5">Wat ging minder goed / te bespreken</h2>
     {% if not discussion_points %}
       {{ c.empty_state("Geen bespreekpunten geregistreerd.") }}
     {% else %}
-    <ul class="space-y-2">
+    <ul class="space-y-1.5">
       {% for dp in discussion_points %}
-      <li class="rounded-xl border border-amber-100 bg-amber-50/50 px-4 py-3 text-sm">
-        <span class="font-semibold text-slate-900">{{ dp.title }}</span>
+      <li class="rounded-lg border border-amber-100 bg-amber-50/60 px-4 py-2.5 text-[13px]">
+        <span class="font-semibold text-ink-900">{{ dp.title }}</span>
         <span class="text-slate-600"> — {{ dp.description }}</span>
       </li>
       {% endfor %}
@@ -100,14 +100,14 @@
   </section>
 
   <section>
-    <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-400 mb-3">Leerpunten</h2>
+    <h2 class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2.5">Leerpunten</h2>
     {% if not lessons %}
       {{ c.empty_state("Geen leerpunten geregistreerd.") }}
     {% else %}
-    <ul class="space-y-2">
+    <ul class="space-y-1.5">
       {% for l in lessons %}
-      <li class="rounded-xl border border-indigo-100 bg-indigo-50/50 px-4 py-3 text-sm">
-        <span class="font-semibold text-slate-900">{{ l.title }}</span>
+      <li class="rounded-lg border border-accent-100 bg-accent-50/60 px-4 py-2.5 text-[13px]">
+        <span class="font-semibold text-ink-900">{{ l.title }}</span>
         <span class="text-slate-600"> — {{ l.description }}</span>
       </li>
       {% endfor %}
@@ -116,14 +116,14 @@
   </section>
 
   <section>
-    <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-400 mb-3">Mogelijke verbeteringen</h2>
+    <h2 class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2.5">Mogelijke verbeteringen</h2>
     {% if not improvements %}
       {{ c.empty_state("Geen verbeteringen geregistreerd.") }}
     {% else %}
-    <ul class="space-y-2">
+    <ul class="space-y-1.5">
       {% for imp in improvements %}
-      <li class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
-        <span class="font-semibold text-slate-900">{{ imp.title }}</span>
+      <li class="rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-[13px]">
+        <span class="font-semibold text-ink-900">{{ imp.title }}</span>
         <span class="text-slate-600"> — {{ imp.description }}</span>
       </li>
       {% endfor %}

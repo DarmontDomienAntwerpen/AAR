@@ -4,36 +4,51 @@
 {% block title %}Archief{% endblock %}
 {% block content %}
 
-<div class="flex items-start justify-between mb-8">
+<div class="flex items-start justify-between mb-6">
   <div>
-    <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Archief</h1>
-    <p class="mt-1 text-sm text-slate-500">Alle After Action Reviews — doorzoekbaar op locatie, type en omschrijving.</p>
+    <h1 class="text-[22px] font-bold text-ink-900 tracking-[-0.01em]">Archief</h1>
+    <p class="mt-1 text-[13px] text-slate-500">Alle After Action Reviews, doorzoekbaar op locatie, type en omschrijving.</p>
   </div>
   <a href="/incidents/new"
-     class="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-700 transition">
-    {{ icons.icon('plus', 'w-4 h-4') }}
+     class="inline-flex items-center gap-1.5 rounded-md bg-ink-900 px-3.5 py-2 text-[13px] font-semibold text-white shadow-sm hover:bg-ink-800 transition">
+    {{ icons.icon('plus', 'w-3.5 h-3.5') }}
     Nieuw incident
   </a>
 </div>
 
-<form method="get" action="/" class="mb-6 flex gap-3">
+<div class="grid grid-cols-3 gap-3 mb-6">
+  <div class="rounded-lg border border-slate-200 bg-white px-4 py-3.5">
+    <div class="text-[11px] font-medium uppercase tracking-wide text-slate-400">Totaal incidenten</div>
+    <div class="mt-1 text-2xl font-bold text-ink-900 tabular">{{ stats.total }}</div>
+  </div>
+  <div class="rounded-lg border border-slate-200 bg-white px-4 py-3.5">
+    <div class="text-[11px] font-medium uppercase tracking-wide text-slate-400">In beoordeling</div>
+    <div class="mt-1 text-2xl font-bold text-ink-900 tabular">{{ stats.in_review }}</div>
+  </div>
+  <div class="rounded-lg border border-slate-200 bg-white px-4 py-3.5">
+    <div class="text-[11px] font-medium uppercase tracking-wide text-slate-400">Afgerond</div>
+    <div class="mt-1 text-2xl font-bold text-ink-900 tabular">{{ stats.finalized }}</div>
+  </div>
+</div>
+
+<form method="get" action="/" class="mb-5 flex gap-2.5">
   <div class="relative flex-1">
-    <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
-      {{ icons.icon('search', 'w-4 h-4') }}
+    <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+      {{ icons.icon('search', 'w-[15px] h-[15px]') }}
     </div>
     <input type="text" name="q" value="{{ q }}" placeholder="Zoeken op locatie of omschrijving..."
-           class="w-full rounded-lg border border-slate-300 bg-white py-2.5 pl-10 pr-3 text-sm text-slate-900
-                  placeholder:text-slate-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500">
+           class="w-full rounded-md border border-slate-300 bg-white py-2 pl-9 pr-3 text-[13px] text-ink-900
+                  placeholder:text-slate-400 focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500">
   </div>
   <select name="type" onchange="this.form.submit()"
-          class="rounded-lg border border-slate-300 bg-white py-2.5 px-3 text-sm text-slate-700
-                 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500">
+          class="rounded-md border border-slate-300 bg-white py-2 px-3 text-[13px] text-slate-700
+                 focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500">
     <option value="">Alle types</option>
     {% for t in IncidentType %}
     <option value="{{ t.value }}" {{ "selected" if selected_type == t.value else "" }}>{{ t.value }}</option>
     {% endfor %}
   </select>
-  <button type="submit" class="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
+  <button type="submit" class="rounded-md border border-slate-300 bg-white px-3.5 py-2 text-[13px] font-medium text-slate-700 hover:bg-slate-50">
     Zoeken
   </button>
 </form>
@@ -41,29 +56,31 @@
 {% if not incidents %}
   {{ c.empty_state("Geen incidenten gevonden.") }}
 {% else %}
-<div class="space-y-3">
+<div class="rounded-lg border border-slate-200 bg-white overflow-hidden">
+  <div class="grid grid-cols-[1fr_140px_110px_100px_24px] gap-4 px-4 py-2 text-[11px] font-medium uppercase tracking-wide text-slate-400 border-b border-slate-100">
+    <div>Incident</div>
+    <div>Type</div>
+    <div>Datum</div>
+    <div>Status</div>
+    <div></div>
+  </div>
   {% for incident in incidents %}
   <a href="/incidents/{{ incident.id }}/sources"
-     class="block rounded-xl border border-slate-200 bg-white px-5 py-4 hover:border-brand-300 hover:shadow-sm transition">
-    <div class="flex items-center justify-between gap-4">
-      <div class="min-w-0">
-        <div class="flex items-center gap-2">
-          <span class="font-semibold text-slate-900 truncate">{{ incident.location }}</span>
-          <span class="text-slate-300">&middot;</span>
-          <span class="text-sm text-slate-500">{{ incident.incident_type.value }}</span>
-        </div>
-        {% if incident.description %}
-        <p class="mt-1 text-sm text-slate-500 truncate">{{ incident.description }}</p>
-        {% endif %}
-      </div>
-      <div class="flex items-center gap-4 shrink-0">
-        <span class="text-sm text-slate-500">{{ incident.date|nl_date }}</span>
-        <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium {{ status_badge_class(incident.status) }}">
-          {{ status_label(incident.status) }}
-        </span>
-        {{ icons.icon('arrow-right', 'w-4 h-4 text-slate-300') }}
-      </div>
+     class="grid grid-cols-[1fr_140px_110px_100px_24px] items-center gap-4 px-4 py-3 border-b border-slate-100 last:border-0 hover:bg-slate-50/80 transition">
+    <div class="min-w-0">
+      <div class="font-medium text-[13.5px] text-ink-900 truncate">{{ incident.location }}</div>
+      {% if incident.description %}
+      <div class="text-[12px] text-slate-500 truncate mt-0.5">{{ incident.description }}</div>
+      {% endif %}
     </div>
+    <div class="text-[12.5px] text-slate-600 truncate">{{ incident.incident_type.value }}</div>
+    <div class="text-[12.5px] text-slate-500 tabular">{{ incident.date|nl_date }}</div>
+    <div>
+      <span class="inline-flex items-center rounded px-1.5 py-[3px] text-[11px] font-semibold leading-none {{ status_badge_class(incident.status) }}">
+        {{ status_label(incident.status) }}
+      </span>
+    </div>
+    {{ icons.icon('arrow-right', 'w-4 h-4 text-slate-300') }}
   </a>
   {% endfor %}
 </div>

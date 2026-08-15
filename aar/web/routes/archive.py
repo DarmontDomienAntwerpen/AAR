@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
-from aar.models import IncidentType
+from aar.models import IncidentStatus, IncidentType
 from aar.services.incident_service import list_incidents
 from aar.web.deps import get_db
 from aar.web.templating import templates
@@ -20,6 +20,14 @@ def archive(
 ):
     incident_type = IncidentType(type) if type else None
     incidents = list_incidents(session, search_text=q, incident_type=incident_type)
+
+    all_incidents = incidents if not (q or type) else list_incidents(session)
+    stats = {
+        "total": len(all_incidents),
+        "in_review": sum(1 for i in all_incidents if i.status == IncidentStatus.IN_REVIEW),
+        "finalized": sum(1 for i in all_incidents if i.status == IncidentStatus.FINALIZED),
+    }
+
     return templates.TemplateResponse(
         request,
         "archive.html",
@@ -28,5 +36,6 @@ def archive(
             "incidents": incidents,
             "q": q or "",
             "selected_type": type or "",
+            "stats": stats,
         },
     )

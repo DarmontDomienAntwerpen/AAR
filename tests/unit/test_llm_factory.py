@@ -12,6 +12,8 @@ def _settings(**overrides) -> Settings:
         anthropic_model="claude-sonnet-5",
         db_path="/tmp/unused.db",
         log_level="INFO",
+        access_password=None,
+        session_secret="test-secret",
     )
     base.update(overrides)
     return Settings(**base)

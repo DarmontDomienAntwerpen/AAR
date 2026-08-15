@@ -530,6 +530,93 @@ change).
   tests for `media_service.py` (incl. the unlink-on-event-delete case and
   an unsupported-extension rejection) plus photo-upload/link/serve coverage
   folded into `test_web_app.py`'s full-flow test. 110/111 tests passing.
+- **Phase 16 (post-handoff, user-requested):** user feedback after seeing
+  Phase 14's first pass: "looks like it was built by a kid learning to
+  program" and "I work at a very professional organisation." Full visual
+  redesign of the design system in `aar/web/templates/base.html` +
+  `_components.html` + a sweep across every template: replaced the generic
+  Tailwind-tutorial indigo palette with a restrained monochrome `ink` scale
+  (near-black primary buttons/active states) plus a single muted desaturated
+  `accent` steel-blue for focus rings/links, removed the 🚒 emoji brand mark
+  in favour of a small geometric SVG mark, switched the sidebar to dark
+  (`ink-950`) with a subtle left-accent active state instead of a filled
+  colour pill, tightened border radii (`rounded-2xl`→`rounded-lg`
+  everywhere) and the whole typographic scale (custom `text-[13px]`-family
+  sizes instead of Tailwind's default `text-sm`/`text-xs`), and rebuilt the
+  archive page (was mostly dead whitespace below a single row) with a stats
+  row and a proper table-style list. Verified via fresh Playwright
+  screenshots, inspected directly, not just asserted no-exception.
+- **Phase 17 (post-handoff, user-requested):** user feedback on content
+  quality after the redesign: "the results are quite poor", "who said this
+  and when isn't shown", "there's no overview of which commander has which
+  callsign/unit". Three concrete fixes, not just polish:
+  1. **Mock content duplication bug**: `DiscussionPointCandidate`/
+     `PositiveFindingCandidate.title` was literally `content[:80]` while
+     `.description` was the same `content` unsliced — for any observation
+     under 80 characters these were identical, which is exactly the
+     "title equals the text" complaint. Fixed in `aar/llm/mock.py` with
+     `_headline()` (a genuinely short label, first ~8 words) and
+     `_attributed_quote()` (full quote prefixed with the commander's display
+     name, e.g. `P12 (1ste Hulpcentrum) — Adjudant Janssens: „...”`).
+     `aar/analysis/findings.py::build_findings_payload` now includes
+     `attributed_to` per observation so the mock has it to work with.
+  2. **Attribution surfaced in the UI, not just embedded in text**: added
+     `_components.html::attributed_to()` macro (person icon + name) shown
+     directly on every discussion-point/positive-finding card in
+     `_bespreken.html`/`_positief.html`, plus the linked event's title
+     ("Moment: ...") and a colour-coded left border by origin category
+     (`templating.py::ORIGIN_BORDER_CLASSES`) — previously attribution only
+     existed inside the collapsed "Bewijs bekijken" disclosure.
+  3. **Commander roster added** to the Overzicht tab (`aar/web/templates/
+     aar/_overzicht.html`): callsign / unit / rank+surname / objective-
+     achieved per report — this existed as data (`CommanderReport`) since
+     Phase 2 but was never surfaced as a standalone roster anywhere.
+     Discussion points and positive findings are now also sorted by their
+     linked event's `order_index` (the tool's only legitimate notion of
+     "chronological" — relative narrative order, never a fabricated clock
+     time) instead of arbitrary insertion order.
+  **A real regression was introduced and caught during this work**: making
+  `ai_summary` show real quoted content (fix 1) broke the Stage 4
+  dispatch-matching heuristic (`aar/analysis/timeline.py`) — richer event
+  text meant generic fire-incident vocabulary ("eerste", "verdieping")
+  started coincidentally overlapping with unrelated dispatch rows, and the
+  demo went from 1/12 events correctly timestamped to 9/12, most of them
+  spurious. Root cause: the matcher used `title + ai_summary + involved_*`
+  as its text, so its input size was no longer bounded once `ai_summary`
+  became a full paragraph. Fixed by an architectural decoupling rather than
+  threshold tuning: matching now uses **only the event title**, never
+  `ai_summary` or `involved_commanders`/`involved_units` (the latter are
+  proper nouns that pad the word count without ever genuinely matching
+  dispatch phrasing) — what's *displayed* to the facilitator and what's
+  *used for matching* are deliberately different things now. The overlap
+  requirement is a ratio of the *shorter* side's word count
+  (`max(2, ceil(min(len(event_words), len(dispatch_words)) * 0.66))`) rather
+  than a fixed count, since a short title (1-3 words) can never satisfy a
+  requirement sized off a longer dispatch description. Added a dedicated
+  regression test (`test_enrich_ignores_generic_overlap_in_long_ai_summary`)
+  that fails if this ever regresses again. Verified via `scripts/
+  run_synthetic_demo.py` logs (back to the expected 1/12) and fresh
+  screenshots, not just the test suite. 111/112 tests passing (1 documented
+  skip).
+- **Started, not finished: single shared-password login gate.** User asked
+  "only the AAR leader should be able to get in, right?" — correctly noted
+  there is no authentication at all (an explicit v1 scope exclusion per the
+  original spec). Began implementing an opt-in gate: `Settings.access_password`
+  / `Settings.session_secret` (auto-generated and persisted to
+  `data/.session_secret`, gitignored, if not set via env — so restarts don't
+  silently log everyone out), `aar/web/routes/auth.py` (`/login`, `/logout`,
+  constant-time password comparison via `hmac.compare_digest`), and
+  `aar/web/templates/login.html` (matches the Phase 16 design system, no
+  sidebar). **Not yet wired into `aar/web/app.py`** — no `SessionMiddleware`,
+  no auth-gate middleware, no `auth.router` registration, so none of this
+  code is reachable or active yet. Fully inert in its current state (doesn't
+  affect any existing route or test). Needs: `SessionMiddleware` added
+  before an `@app.middleware("http")` gate that checks `request.session`
+  and redirects unauthenticated requests to `/login` when `settings.
+  auth_enabled` is true; a "Uitloggen" link in the sidebar; a test covering
+  gated-vs-open behaviour; `.env.example`/HANDOFF.md documentation (the
+  `.env.example` entries for `AAR_ACCESS_PASSWORD`/`AAR_SESSION_SECRET`
+  were already added). Pick this back up before considering it done.
 
 ## 9. Open Work / Known Bugs / Blocked / Unverified / Technical Debt
 

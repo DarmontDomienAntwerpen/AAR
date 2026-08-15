@@ -5,11 +5,11 @@
   {{ c.empty_state("Nog geen positieve punten.") }}
 {% endif %}
 
-<div class="space-y-4">
+<div class="space-y-3.5">
   {% for pf in positive_findings %}
-  <div class="rounded-2xl border border-slate-200 bg-white p-6">
-    <div class="flex items-start justify-between gap-4">
-      <div class="flex flex-wrap items-center gap-2">
+  <div class="rounded-lg border border-slate-200 border-l-4 border-l-emerald-400 bg-white p-5">
+    <div class="flex items-start justify-between gap-4 mb-2">
+      <div class="flex flex-wrap items-center gap-1.5">
         {{ c.badge("Positief punt", "emerald") }}
         {% if pf.is_human_added %}{{ c.badge("Door facilitator", "sky") }}{% endif %}
       </div>
@@ -19,12 +19,19 @@
       </form>
     </div>
 
-    <form method="post" action="/incidents/{{ incident.id }}/aar/positive-findings/{{ pf.id }}/update" class="mt-3 space-y-2">
+    <div class="flex items-center justify-between gap-4 mb-2.5">
+      {{ c.attributed_to(pf.observation_ids, observations_by_id) }}
+      {% if pf.event %}
+      <span class="text-[11.5px] text-slate-400">Moment: {{ pf.event.title }}</span>
+      {% endif %}
+    </div>
+
+    <form method="post" action="/incidents/{{ incident.id }}/aar/positive-findings/{{ pf.id }}/update" class="space-y-2">
       <input type="text" name="title" value="{{ pf.title }}"
-             class="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm font-semibold text-slate-900 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-brand-500">
+             class="w-full rounded-md border border-slate-200 bg-slate-50/50 px-3 py-2 text-[13.5px] font-semibold text-ink-900 focus:border-accent-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-accent-500">
       <textarea name="description" rows="2"
-                class="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm text-slate-600 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-brand-500">{{ pf.description }}</textarea>
-      <button type="submit" class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition">
+                class="w-full rounded-md border border-slate-200 bg-slate-50/50 px-3 py-2 text-[13px] leading-relaxed text-slate-600 focus:border-accent-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-accent-500">{{ pf.description }}</textarea>
+      <button type="submit" class="rounded-md border border-slate-300 px-3 py-1.5 text-[12px] font-semibold text-slate-700 hover:bg-slate-50 transition">
         Opslaan
       </button>
     </form>
@@ -34,13 +41,13 @@
   {% endfor %}
 </div>
 
-<details class="mt-6 rounded-2xl border border-dashed border-slate-300 p-5">
-  <summary class="cursor-pointer text-sm font-medium text-slate-600 select-none">+ Positief punt handmatig toevoegen</summary>
+<details class="mt-5 rounded-lg border border-dashed border-slate-300 p-5">
+  <summary class="cursor-pointer text-[13px] font-medium text-slate-600 select-none">+ Positief punt handmatig toevoegen</summary>
   <form method="post" action="/incidents/{{ incident.id }}/aar/positive-findings" class="mt-3 space-y-2">
     <input type="text" name="title" required placeholder="Titel"
-           class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500">
+           class="w-full rounded-md border border-slate-300 px-3 py-2 text-[13px] focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500">
     <textarea name="description" rows="2" placeholder="Beschrijving"
-              class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"></textarea>
-    <button type="submit" class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition">Toevoegen</button>
+              class="w-full rounded-md border border-slate-300 px-3 py-2 text-[13px] focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"></textarea>
+    <button type="submit" class="rounded-md bg-ink-900 px-3.5 py-2 text-[13px] font-semibold text-white hover:bg-ink-800 transition">Toevoegen</button>
   </form>
 </details>

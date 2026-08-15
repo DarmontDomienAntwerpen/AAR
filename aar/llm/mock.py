@@ -51,6 +51,21 @@ def _split_sentences(text: str) -> list[str]:
     return sentences
 
 
+def _headline(content: str) -> str:
+    """A short, distinct label — not the full sentence — so title and
+    description don't just duplicate each other in the UI."""
+    words = content.split()
+    short = " ".join(words[:8])
+    return short + ("…" if len(words) > 8 else "")
+
+
+def _attributed_quote(obs: dict) -> str:
+    attributed_to = obs.get("attributed_to")
+    if attributed_to:
+        return f"{attributed_to}: „{obs['content']}”"
+    return obs["content"]
+
+
 def _classify_sentence(sentence: str) -> ObservationType:
     lowered = sentence.lower()
     if any(phrase in lowered for phrase in ASSUMPTION_PHRASES):
@@ -150,14 +165,19 @@ class MockLLMProvider(LLMProvider):
                     if not approx_time_text and o.get("reported_time_text"):
                         approx_time_text = o["reported_time_text"]
 
+            # Show actual reported content instead of a meta-description —
+            # a count of observations isn't a summary of what was observed.
+            summary_text = " ".join(
+                p["perspective_text"] for p in perspectives if p["perspective_text"]
+            ).strip()
+            if not summary_text:
+                summary_text = f"Geen inhoud gerapporteerd voor '{label.lower()}'."
+
             events.append(
                 {
                     "title": label,
                     "order_hint": order_hint,
-                    "ai_summary": (
-                        f"{len(obs_list)} waarneming(en) van {len(by_report)} "
-                        f"commandant(en) met betrekking tot '{label.lower()}'."
-                    ),
+                    "ai_summary": summary_text,
                     "involved_units": [],
                     "involved_commanders": commanders,
                     "observation_ids": [o["id"] for o in obs_list],
@@ -198,11 +218,10 @@ class MockLLMProvider(LLMProvider):
             if origin is None:
                 continue
             report_ids_involved.add(obs.get("commander_report_id"))
-            title = obs["content"][:80]
             discussion_points.append(
                 {
-                    "title": title,
-                    "description": obs["content"],
+                    "title": _headline(obs["content"]),
+                    "description": _attributed_quote(obs),
                     "origin_category": origin.value,
                     "confidence_state": type_to_confidence[obs["observation_type"]].value,
                     "observation_ids": [obs["id"]],
@@ -212,8 +231,8 @@ class MockLLMProvider(LLMProvider):
 
         positive_findings = [
             {
-                "title": obs["content"][:80],
-                "description": obs["content"],
+                "title": _headline(obs["content"]),
+                "description": _attributed_quote(obs),
                 "observation_ids": [obs["id"]],
                 "event_title": event_title_for(obs["id"]),
             }

@@ -7,17 +7,17 @@
 {{ c.page_header("Bronnen", "Upload de commandantenverslagen (.docx), het dispatchbestand (.xlsx), en eventuele foto's of plannen.") }}
 
 <div class="grid grid-cols-2 gap-6">
-  <div class="rounded-2xl border border-slate-200 bg-white p-6">
+  <div class="rounded-lg border border-slate-200 bg-white p-6">
     <div class="flex items-center justify-between mb-4">
       <h2 class="font-semibold text-slate-900">Commandantenverslagen</h2>
-      <a href="/commander-report-template.docx" class="text-xs font-medium text-brand-600 hover:text-brand-700">
+      <a href="/commander-report-template.docx" class="text-xs font-medium text-accent-700 hover:text-accent-800">
         Leeg sjabloon downloaden
       </a>
     </div>
 
     <form method="post" action="/incidents/{{ incident.id }}/sources/reports" enctype="multipart/form-data" class="mb-5">
       <label class="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300
-                     bg-slate-50/50 px-4 py-8 text-center cursor-pointer hover:border-brand-400 hover:bg-brand-50/30 transition">
+                     bg-slate-50/50 px-4 py-8 text-center cursor-pointer hover:border-accent-400 hover:bg-accent-50/30 transition">
         {{ icons.icon('upload', 'w-6 h-6 text-slate-400') }}
         <span class="text-sm font-medium text-slate-600">Kies een of meerdere .docx-bestanden</span>
         <input type="file" name="files" accept=".docx" multiple class="hidden" onchange="this.closest('form').requestSubmit()">
@@ -47,12 +47,12 @@
     </div>
   </div>
 
-  <div class="rounded-2xl border border-slate-200 bg-white p-6">
+  <div class="rounded-lg border border-slate-200 bg-white p-6">
     <h2 class="font-semibold text-slate-900 mb-4">Dispatchgegevens</h2>
 
     <form method="post" action="/incidents/{{ incident.id }}/sources/dispatch" enctype="multipart/form-data" class="mb-5">
       <label class="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300
-                     bg-slate-50/50 px-4 py-8 text-center cursor-pointer hover:border-brand-400 hover:bg-brand-50/30 transition">
+                     bg-slate-50/50 px-4 py-8 text-center cursor-pointer hover:border-accent-400 hover:bg-accent-50/30 transition">
         {{ icons.icon('upload', 'w-6 h-6 text-slate-400') }}
         <span class="text-sm font-medium text-slate-600">Kies een .xlsx-bestand</span>
         <input type="file" name="file" accept=".xlsx" class="hidden" onchange="this.closest('form').requestSubmit()">
@@ -77,13 +77,13 @@
   </div>
 </div>
 
-<div class="mt-6 rounded-2xl border border-slate-200 bg-white p-6">
+<div class="mt-6 rounded-lg border border-slate-200 bg-white p-6">
   <h2 class="font-semibold text-slate-900 mb-4">Foto's &amp; plannen</h2>
   <p class="text-xs text-slate-500 mb-4">Situatieschetsen, plattegronden of foto's — referentiemateriaal, wordt niet door de AI geanalyseerd. Kan later gekoppeld worden aan een specifiek incidentmoment.</p>
 
   <form method="post" action="/incidents/{{ incident.id }}/sources/photos" enctype="multipart/form-data" class="mb-5">
     <label class="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300
-                   bg-slate-50/50 px-4 py-8 text-center cursor-pointer hover:border-brand-400 hover:bg-brand-50/30 transition">
+                   bg-slate-50/50 px-4 py-8 text-center cursor-pointer hover:border-accent-400 hover:bg-accent-50/30 transition">
       {{ icons.icon('upload', 'w-6 h-6 text-slate-400') }}
       <span class="text-sm font-medium text-slate-600">Kies foto's (.jpg/.png/.webp) of plannen (.pdf)</span>
       <input type="file" name="files" accept=".jpg,.jpeg,.png,.webp,.pdf" multiple class="hidden" onchange="this.closest('form').requestSubmit()">
@@ -111,7 +111,7 @@
         <form method="post" action="/incidents/{{ incident.id }}/media/{{ photo.id }}/caption">
           <input type="text" name="caption" value="{{ photo.caption }}" placeholder="Bijschrift toevoegen..."
                  onchange="this.form.requestSubmit()"
-                 class="w-full text-xs border-0 border-b border-transparent hover:border-slate-200 focus:border-brand-500 px-0 py-0.5 focus:outline-none focus:ring-0 bg-transparent">
+                 class="w-full text-xs border-0 border-b border-transparent hover:border-slate-200 focus:border-accent-500 px-0 py-0.5 focus:outline-none focus:ring-0 bg-transparent">
         </form>
         <div class="flex items-center justify-between mt-1.5">
           <span class="text-xs text-slate-400 truncate">{{ photo.original_filename }}</span>
@@ -127,13 +127,13 @@
   {% endif %}
 </div>
 
-<div class="mt-8 flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-6 py-5">
+<div class="mt-8 flex items-center justify-between rounded-lg border border-slate-200 bg-white px-6 py-5">
   {% if not reports %}
   <p class="text-sm text-slate-500">Voeg minstens één commandantenverslag toe om de analyse te starten.</p>
   {% else %}
   <p class="text-sm text-slate-500">{{ reports|length }} verslag(en) klaar voor analyse.</p>
   <a href="/incidents/{{ incident.id }}/analysis"
-     class="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-700 transition">
+     class="inline-flex items-center gap-2 rounded-lg bg-ink-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-ink-800 transition">
     Analyse starten {{ icons.icon('arrow-right', 'w-4 h-4') }}
   </a>
   {% endif %}

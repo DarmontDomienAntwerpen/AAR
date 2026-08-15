@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, Form, Request
 from sqlalchemy.orm import Session
 
 from aar.models import (
+    CommanderReport,
     DiscussionPoint,
     Improvement,
     IncidentEvent,
@@ -39,6 +40,13 @@ def aar_page(incident_id: int, request: Request, tab: str = "overzicht", session
     lessons = aar_service.get_lessons(session, incident)
     improvements = aar_service.get_improvements(session, incident)
 
+    # Order by the narrative position of the moment each is linked to (the
+    # only "chronology" the tool ever claims — relative order, never a
+    # fabricated clock time) rather than arbitrary insertion order.
+    _no_order = len(events) + 1
+    discussion_points.sort(key=lambda dp: dp.event.order_index if dp.event else _no_order)
+    positive_findings.sort(key=lambda pf: pf.event.order_index if pf.event else _no_order)
+
     improvements_by_lesson: dict[int | None, list] = {}
     for imp in improvements:
         improvements_by_lesson.setdefault(imp.related_lesson_id, []).append(imp)
@@ -48,6 +56,9 @@ def aar_page(incident_id: int, request: Request, tab: str = "overzicht", session
 
     default_summary = incident.situation_summary or aar_service.default_situation_summary(session, incident)
     timed_events = sorted([e for e in events if e.exact_time is not None], key=lambda e: e.exact_time)
+    commander_reports = (
+        session.query(CommanderReport).filter_by(incident_id=incident.id).order_by(CommanderReport.callsign).all()
+    )
 
     photos = media_service.list_photos(session, incident)
     photos_by_event: dict[int | None, list] = {}
@@ -74,6 +85,7 @@ def aar_page(incident_id: int, request: Request, tab: str = "overzicht", session
             "photos": photos,
             "photos_by_event": photos_by_event,
             "unlinked_photos": unlinked_photos,
+            "commander_reports": commander_reports,
         },
     )
 
