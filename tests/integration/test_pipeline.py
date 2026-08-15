@@ -80,6 +80,47 @@ def test_full_pipeline_end_to_end(session, sample_incident):
         assert event.exact_time is None
 
 
+class _FailsOnFindingsProvider(MockLLMProvider):
+    """Behaves like the real mock for every stage except findings, where it
+    always returns invalid JSON — simulates a provider/validation failure
+    partway through the pipeline."""
+
+    def _complete(self, *, system_prompt, user_prompt, schema, attempt, previous_error):
+        if schema.get("title") == "FindingsOutput":
+            return "not valid json"
+        return super()._complete(
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+            schema=schema,
+            attempt=attempt,
+            previous_error=previous_error,
+        )
+
+
+def test_pipeline_records_error_and_preserves_earlier_stage_progress_on_mid_run_failure(
+    session, sample_incident
+):
+    _make_report(
+        session, sample_incident, "P12", {"observations": "Bij aankomst was er rookontwikkeling."}
+    )
+
+    run = run_analysis(session, sample_incident, _FailsOnFindingsProvider())
+
+    assert run.status == AnalysisRunStatus.ERROR
+    assert run.stage_reached == "findings"
+    assert run.error_message
+
+    incident = session.get(Incident, sample_incident.id)
+    assert incident.status != IncidentStatus.ANALYZED  # never marked as successfully analysed
+
+    # Extraction and reconstruction (earlier stages) already committed their
+    # work before the failure — a partial pipeline run isn't silently discarded.
+    assert session.query(Observation).filter_by(incident_id=sample_incident.id).count() > 0
+    assert session.query(IncidentEvent).filter_by(incident_id=sample_incident.id).count() > 0
+    # But nothing from the failed findings stage exists.
+    assert session.query(DiscussionPoint).filter_by(incident_id=sample_incident.id).count() == 0
+
+
 def test_pipeline_fails_cleanly_with_no_reports(session, sample_incident):
     run = run_analysis(session, sample_incident, MockLLMProvider())
     assert run.status == AnalysisRunStatus.ERROR

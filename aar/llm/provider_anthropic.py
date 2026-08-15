@@ -66,7 +66,7 @@ class AnthropicProvider(LLMProvider):
                 ],
                 tool_choice={"type": "tool", "name": tool_name},
             )
-        except anthropic.APIError as exc:
+        except anthropic.AnthropicError as exc:
             logger.error("Anthropic API error: %s", exc)
             raise LLMProviderError(f"Anthropic API-fout: {exc}") from exc
 

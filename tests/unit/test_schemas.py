@@ -7,7 +7,7 @@ from aar.models.enums import ObservationType
 from aar.schemas.extraction import ExtractedItem, ReportExtraction
 from aar.schemas.forms import IncidentCreateForm
 from aar.schemas.ingestion import CommanderIdentity, DispatchRecordRaw
-from aar.schemas.reconstruction import ReconstructedEvent, ReconstructionOutput
+from aar.schemas.reconstruction import ReconstructedEvent
 
 
 def test_extracted_item_requires_source_passage():

@@ -36,7 +36,6 @@ from aar.models import (
     Observation,
     ObservationCategory,
     ObservationType,
-    SourceDocument,
 )
 from aar.services.dispatch_service import ingest_dispatch_excel
 from aar.services.report_service import ingest_commander_report

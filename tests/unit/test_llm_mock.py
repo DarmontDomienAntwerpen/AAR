@@ -1,7 +1,7 @@
 import json
 
 from aar.llm.mock import MockLLMProvider
-from aar.models.enums import ObservationCategory, ObservationType
+from aar.models.enums import ObservationType
 from aar.schemas.extraction import ReportExtraction
 from aar.schemas.findings import FindingsOutput
 from aar.schemas.lessons import LessonsOutput

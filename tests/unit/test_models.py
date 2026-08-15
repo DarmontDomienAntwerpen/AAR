@@ -1,7 +1,6 @@
-import datetime as dt
-
 from aar.models import (
     CommanderReport,
+    Incident,
     IncidentEvent,
     Observation,
     ObservationType,
@@ -81,3 +80,36 @@ def test_event_without_exact_time_stays_unset(session, sample_incident):
     session.refresh(event)
     assert event.exact_time is None
     assert event.exact_time_source is None
+
+
+def test_deleting_incident_cascades_to_children(session, sample_incident):
+    doc = SourceDocument(
+        incident_id=sample_incident.id,
+        doc_type=SourceDocumentType.COMMANDER_REPORT,
+        original_filename="p12.docx",
+        stored_path="/tmp/p12.docx",
+        content_hash="cascade-test",
+    )
+    session.add(doc)
+    session.commit()
+    session.refresh(doc)
+
+    report = CommanderReport(
+        incident_id=sample_incident.id, source_document_id=doc.id, callsign="P12", surname="Janssens"
+    )
+    obs = Observation(
+        incident_id=sample_incident.id,
+        observation_type=ObservationType.HUMAN_OBSERVATION,
+        content="Test.",
+    )
+    session.add_all([report, obs])
+    session.commit()
+
+    incident_id = sample_incident.id
+    session.delete(sample_incident)
+    session.commit()
+
+    assert session.get(SourceDocument, doc.id) is None
+    assert session.query(CommanderReport).filter_by(incident_id=incident_id).count() == 0
+    assert session.query(Observation).filter_by(incident_id=incident_id).count() == 0
+    assert session.get(Incident, incident_id) is None

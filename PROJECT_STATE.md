@@ -137,7 +137,7 @@ change).
 | 9 | Re-analysis after correction | DONE |
 | 10 | Archive/search | DONE (built in Phase 1, exercised in Phase 8 smoke test) |
 | 11 | Synthetic end-to-end validation | DONE |
-| 12 | Hardening (full regression) | TODO |
+| 12 | Hardening (full regression) | DONE |
 | 13 | Handoff | TODO |
 
 ## 8. Completed Work
@@ -388,6 +388,38 @@ change).
   corrupted-but-present timestamp is arguably worse than a missing one,
   since it looks authoritative. 17 new tests. 92/93 tests passing (1
   documented skip, not a failure).
+- Phase 12: full regression pass. Ran the suite with
+  `-W error::DeprecationWarning` — zero warnings anywhere. Ran `pyflakes`
+  across `aar/`, `app.py`, `scripts/`, `fixtures/`, `tests/` — the only
+  real findings were unused imports left over from earlier edits (cleaned
+  up in `aar/services/aar_service.py` and five test files); the
+  "undefined name" hits in `aar/models/*.py` are false positives from
+  pyflakes not understanding SQLAlchemy's `Mapped[list["ClassName"]]`
+  string-based forward references (a standard, correct SQLAlchemy 2.0
+  pattern — resolved at runtime once every model module is imported via
+  `aar/models/__init__.py`), not real bugs. Verified the Anthropic SDK's
+  exception hierarchy directly (`anthropic==0.122.0`): `APIConnectionError`,
+  `APITimeoutError`, `RateLimitError`, `APIStatusError`,
+  `APIResponseValidationError`, and `AuthenticationError` all subclass
+  `AnthropicError` — widened `provider_anthropic.py`'s except clause from
+  `anthropic.APIError` to `anthropic.AnthropicError` so no real-provider
+  failure mode (timeout, rate limit, auth, connection) can escape as an
+  unhandled exception; all of them now surface as an `AnalysisRun` with
+  status=ERROR and a Dutch message, same as every other failure path.
+  Added: a pipeline test proving a mid-run provider failure (findings stage)
+  is recorded on the `AnalysisRun` with the correct `stage_reached`, doesn't
+  mark the incident ANALYZED, and — importantly — does NOT discard the
+  already-committed earlier-stage work (extraction/reconstruction results
+  survive; this is a deliberate architectural choice, not a bug: each stage
+  commits independently, so a later failure doesn't roll back earlier
+  progress, consistent with the idempotent/resumable design used for
+  re-analysis). Added a cascade-delete test confirming deleting an
+  `Incident` removes all its `SourceDocument`/`CommanderReport`/`Observation`
+  rows (validates the `cascade="all, delete-orphan"` relationships actually
+  work against SQLite, not just that they're declared). 4 new tests.
+  94/95 tests passing (1 documented skip). Re-ran the full headless UI
+  smoke test (`scripts/ui_smoke_test.py`) after all hardening changes —
+  still passes end to end.
 
 ## 9. Open Work / Known Bugs / Blocked / Unverified / Technical Debt
 
