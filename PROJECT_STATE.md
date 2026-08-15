@@ -1,7 +1,9 @@
 # PROJECT_STATE.md — Fire Service AAR Tool v1
 
 Living engineering source of truth. Read before starting a phase; update after
-completing or materially changing one. Last updated: 2026-08-15 (Phase 0/1 start).
+completing or materially changing one. Last updated: 2026-08-15 — **all
+phases (0-13) complete, Definition of Done satisfied** (see §11 for the
+checklist and the two explicitly-documented UNVERIFIED items).
 
 ---
 
@@ -138,7 +140,7 @@ change).
 | 10 | Archive/search | DONE (built in Phase 1, exercised in Phase 8 smoke test) |
 | 11 | Synthetic end-to-end validation | DONE |
 | 12 | Hardening (full regression) | DONE |
-| 13 | Handoff | TODO |
+| 13 | Handoff | DONE |
 
 ## 8. Completed Work
 
@@ -427,14 +429,23 @@ change).
   (conflicting-order detection between two reports) and E (unlabelled
   positive pattern across reports) are beyond the deterministic mock's
   reach. Verify manually: set `AAR_LLM_PROVIDER=anthropic` and
-  `ANTHROPIC_API_KEY` in `.env`, run the synthetic fixture (script TBD in
-  Phase 13 handoff, or drive it through the UI), and inspect whether the
+  `ANTHROPIC_API_KEY` in `.env`, run `python scripts/run_synthetic_demo.py`
+  (or upload the same fixture through the UI), and inspect whether the
   resulting discussion points include the P12/P21 order conflict and
   whether a positive finding about the P34/O01 rescue handoff appears.
-- **Expected BLOCKED item (documented in advance):** live `AnthropicProvider`
-  calls require `ANTHROPIC_API_KEY` in the environment. If not present when
-  Phase 4/13 run, integration tests hitting the real API will be marked
-  BLOCKED, not faked. Ordinary unit/integration tests never depend on this.
+- **BLOCKED:** `AnthropicProvider` has never been exercised against the
+  real Anthropic API — no `ANTHROPIC_API_KEY` was available in this build
+  environment. Everything around the network call (prompt construction,
+  forced-JSON-schema tool use, retry-on-invalid-output, the
+  `AnthropicError`-to-`AnalysisRun` error path) is implemented and unit-
+  tested with a fake provider standing in for the SDK; only the live call
+  itself is unverified. See HANDOFF.md §6 for exact steps to verify.
+- **Technical debt, accepted for v1:** pipeline stages commit independently
+  rather than the whole `run_analysis()` call being one transaction — a
+  mid-run failure leaves earlier stages' results persisted rather than
+  rolling everything back. This is intentional (matches the idempotent/
+  resumable re-analysis design, see Phase 5-7 notes) but is worth knowing
+  if this is ever generalized beyond a single-operator local tool.
 
 ## 10. Important Implementation Notes
 
@@ -447,3 +458,38 @@ change).
   deterministic keyword pre-tagger used only as a test aid, not as the
   primary detector (semantic detection is the LLM's job; keyword matching
   alone is a known weak signal and is documented as such).
+
+## 11. Definition of Done (spec §71) — final checklist
+
+| Requirement | Status |
+|---|---|
+| Application starts | DONE — `streamlit run app.py`, verified clean-slate boot to HTTP 200 and via headless `AppTest` walkthrough |
+| Incident can be created | DONE — Screen 2, tested |
+| Multiple commander reports can be uploaded | DONE — Screen 3, tested with 4 in the golden fixture |
+| Reports are parsed | DONE — deterministic DOCX parser, 11 edge-case tests |
+| Commander identity is recognised | DONE — identification table parsing, `display_name` property |
+| Dispatch Excel can be uploaded | DONE — Screen 3 |
+| Dispatch data is parsed | DONE — defensive header-synonym parser, 9 edge-case tests |
+| AI pipeline can process structured reports | DONE — 6-stage pipeline, mock provider by default |
+| Chronological incident view is generated | DONE — Screen 5 "Incidentverloop" tab |
+| Reliable important timestamps are displayed | DONE — dispatch enrichment (Stage 4), conservative heuristic |
+| Missing times remain missing | DONE — structural (no exact-time field in the reconstruction LLM schema) + explicitly tested |
+| Assumptions can be identified | DONE — spec §63-A, golden fixture test passes |
+| Uncertainty can be identified | DONE — spec §63-B, golden fixture test passes |
+| Conflicts can be surfaced | PARTIAL — schema/model/UI fully support it (origin_category=conflict); **mock provider cannot detect it** (needs real LLM, documented UNVERIFIED) |
+| Multiple perspectives are preserved | DONE — `EventPerspective` per commander per event |
+| AI can propose positive findings | DONE — explicit went-well content confirmed; implicit/unlabelled patterns need real LLM (documented) |
+| AI can propose discussion points | DONE |
+| AI can propose lessons | DONE |
+| AI can propose improvements | DONE, linked to their source lesson |
+| Evidence remains traceable | DONE — every finding carries `observation_ids` back to source passages |
+| Facilitator can correct content | DONE — edit/add/delete on every entity type in Screen 5 |
+| Re-analysis can incorporate correction | DONE — spec §49, full pipeline re-run with corrections as authoritative context, tested via UI smoke test |
+| Final AAR can be stored | DONE — Screen 6, `finalize_incident` |
+| Archive can be searched | DONE — Screen 1, date/type/free-text filters |
+| Synthetic fixture works | DONE — Phase 11, 12/13 golden conditions verified (2 documented UNVERIFIED) |
+| Automated tests pass | DONE — 94 passed, 1 documented skip |
+| No known critical bug remains undocumented | DONE — one real bug found (dispatch date parsing) and fixed with a regression test; nothing else outstanding |
+| Setup instructions work | DONE — followed HANDOFF.md §3-5 verbatim during this build |
+| PROJECT_STATE.md is current | DONE — this document |
+| HANDOFF.md exists | DONE |
