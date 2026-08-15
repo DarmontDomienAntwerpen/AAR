@@ -700,6 +700,32 @@ change).
   111/112 tests passing (1 documented skip, unrelated); verified via fresh
   screenshots of the Final AAR page specifically (both the "Situatie"
   section and "Incidentverloop"), not just the test suite.
+- **Phase 20 (post-handoff, user-requested):** feedback on the Phase 18
+  commander card grid: wanted "a bit clearer with colour, professional but
+  not boring and not flashy", every field fully readable (the `line-clamp-2`
+  truncation was cutting fields off mid-sentence), and "let the LLM
+  summarise the story so everything is visible in the card at a glance."
+  Fixed: (1) added `templating.py::OBJECTIVE_BORDER_CLASSES` — a
+  `border-l-4` accent per card colour-coded by that commander's
+  objective-achieved status (emerald/amber/rose/slate), meaningful colour
+  tied to actual content, not decoration; (2) removed `line-clamp-2` and
+  switched the card body from a cramped 2-column grid to a single column so
+  every field's full text is readable, no truncation; (3) for "let the LLM
+  summarise at a glance" — named this explicitly as a real-LLM-only
+  capability again (genuine synthesis needs judgement the mock doesn't
+  have), and built the honest deterministic version instead: a one-line
+  "Besliste: ... Resultaat: ..." gist (first sentence of each) in a
+  highlighted band at the top of each card, visually distinct from the full
+  fields below so it doesn't pretend to be more than what it is. Also
+  caught and fixed the same "-"-placeholder-leaking-through bug from
+  Phase 19, in a second code path: the commander cards read
+  `CommanderReport.raw_sections` directly (the deterministic DOCX-parse
+  output) rather than going through the mock's `_split_sentences` filter,
+  so empty "-" sections were still appearing verbatim there. Added a
+  reusable Jinja test (`templates.env.tests["placeholder_text"]`) instead of
+  duplicating the regex, used in both the compact and full-report views.
+  111/112 tests passing (1 documented skip, unrelated); verified via fresh
+  screenshots.
 
 ## 9. Open Work / Known Bugs / Blocked / Unverified / Technical Debt
 

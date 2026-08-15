@@ -22,7 +22,7 @@
   <div class="grid grid-cols-2 gap-4">
     {% for report in commander_reports %}
     {% set sections = report.raw_sections or {} %}
-    <div class="rounded-lg border border-slate-200 bg-white overflow-hidden">
+    <div class="rounded-lg border border-slate-200 border-l-4 {{ objective_border_class(report.objective_achieved) }} bg-white overflow-hidden">
       <div class="flex items-center gap-3 px-4 py-3 bg-slate-50/70 border-b border-slate-100">
         <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-ink-900 text-white text-[12px] font-mono font-bold">
           {{ report.callsign[:3] if report.callsign else "?" }}
@@ -36,13 +36,24 @@
         </span>
       </div>
 
-      <div class="p-4 grid grid-cols-2 gap-x-4 gap-y-3">
+      {% set decision_gist = (sections.get('decision', '').split('.') | first) %}
+      {% set result_gist = (sections.get('result', '').split('.') | first) %}
+      {% if decision_gist is placeholder_text %}{% set decision_gist = "" %}{% endif %}
+      {% if result_gist is placeholder_text %}{% set result_gist = "" %}{% endif %}
+      {% if decision_gist or result_gist %}
+      <div class="px-4 py-2.5 bg-accent-50/60 text-[12px] text-accent-900 leading-relaxed border-b border-slate-100">
+        {% if decision_gist %}<span class="font-semibold">Besliste:</span> {{ decision_gist }}.{% endif %}
+        {% if result_gist %} <span class="font-semibold">Resultaat:</span> {{ result_gist }}.{% endif %}
+      </div>
+      {% endif %}
+
+      <div class="p-4 space-y-3">
         {% for key, field_label in commander_section_fields %}
         {% set value = sections.get(key, "") %}
-        {% if value %}
+        {% if value and value is not placeholder_text %}
         <div>
           <div class="text-[10.5px] font-semibold uppercase tracking-wide text-slate-400 mb-0.5">{{ field_label }}</div>
-          <p class="text-[12px] text-slate-600 leading-relaxed line-clamp-2">{{ value }}</p>
+          <p class="text-[12.5px] text-slate-600 leading-relaxed">{{ value }}</p>
         </div>
         {% endif %}
         {% endfor %}
@@ -53,7 +64,7 @@
         <div class="mt-3 space-y-3">
           {% for key, field_label in commander_section_fields + [("narrative", "Verloop / verhaal"), ("why", "Waarom"), ("doubts_assumptions", "Twijfels / veronderstellingen"), ("information_position", "Informatiepositie"), ("objective", "Doelstelling"), ("other", "Overig")] %}
           {% set value = sections.get(key, "") %}
-          {% if value %}
+          {% if value and value is not placeholder_text %}
           <div>
             <div class="text-[10.5px] font-semibold uppercase tracking-wide text-slate-400 mb-0.5">{{ field_label }}</div>
             <p class="text-[12.5px] text-slate-600 leading-relaxed whitespace-pre-line">{{ value }}</p>

@@ -4,6 +4,7 @@ Dutch-only-in-the-UI rule (spec §57) stays centralised in one place."""
 from __future__ import annotations
 
 import datetime as dt
+import re
 from pathlib import Path
 
 from fastapi.templating import Jinja2Templates
@@ -76,6 +77,14 @@ OBJECTIVE_BADGE_CLASSES = {
 }
 templates.env.globals["objective_badge_class"] = lambda o: OBJECTIVE_BADGE_CLASSES.get(o, "bg-slate-100 text-slate-500")
 
+OBJECTIVE_BORDER_CLASSES = {
+    ObjectiveAchieved.JA: "border-l-emerald-400",
+    ObjectiveAchieved.GEDEELTELIJK: "border-l-amber-400",
+    ObjectiveAchieved.NEE: "border-l-rose-400",
+    ObjectiveAchieved.NIET_TE_BEOORDELEN: "border-l-slate-300",
+}
+templates.env.globals["objective_border_class"] = lambda o: OBJECTIVE_BORDER_CLASSES.get(o, "border-l-slate-300")
+
 COMMANDER_SECTION_FIELDS = [
     ("observations", "Waarnemingen"),
     ("assessment", "Inschatting"),
@@ -85,6 +94,9 @@ COMMANDER_SECTION_FIELDS = [
     ("went_less_well", "Wat ging minder goed"),
 ]
 templates.env.globals["commander_section_fields"] = COMMANDER_SECTION_FIELDS
+
+_PLACEHOLDER_RE = re.compile(r"^[\s\-–—.]*$")
+templates.env.tests["placeholder_text"] = lambda text: bool(_PLACEHOLDER_RE.match(text or ""))
 templates.env.filters["nl_date"] = _fmt_date
 templates.env.filters["nl_time"] = _fmt_time
 templates.env.filters["nl_datetime"] = _fmt_datetime
