@@ -130,8 +130,8 @@ change).
 | 2 | Commander DOCX template + parser | DONE |
 | 3 | Dispatch Excel ingestion | DONE |
 | 4 | LLM abstraction (base/mock/anthropic) | DONE |
-| 5 | Report AI extraction | TODO |
-| 6 | Incident reconstruction | TODO |
+| 5 | Report AI extraction | DONE |
+| 6 | Incident reconstruction | DONE |
 | 7 | Analysis engine (findings/lessons) | TODO |
 | 8 | Interactive AAR (Streamlit workflow) | TODO |
 | 9 | Re-analysis after correction | TODO |
@@ -244,6 +244,33 @@ change).
   the pipeline (Phase 5+) once built; a `live_llm`-marked pytest hook can be
   added at that point (pytest.ini already excludes `live_llm` from default
   runs). 49/49 tests passing.
+- Phase 5: `aar/analysis/extraction.py::run_extraction` — builds the Stage 1
+  prompt (system addendum explicitly restricts `observation_type` to
+  human_observation/assumption/uncertainty at this stage — fact/conflict/
+  ai_observation are reserved for later stages that can actually establish
+  them), calls the provider, and persists one `Observation` row per
+  extracted item with `attributed_to` set to the report's display name.
+  Idempotent: reruns replace that report's previous AI-generated
+  observations rather than accumulating duplicates. 3 new tests.
+- Phase 6: `aar/analysis/reconstruction.py::run_reconstruction` (Stage 3) —
+  gathers all `FACT/HUMAN_OBSERVATION/ASSUMPTION/UNCERTAINTY`-typed
+  observations that have a `commander_report_id` (deliberately excludes
+  `CONFLICT`/`AI_OBSERVATION` rows so a later analysis run never re-groups
+  its own prior output as if it were fresh source material), includes any
+  `HumanCorrection` rows as authoritative context, and asks the LLM to group
+  them into `IncidentEvent`s with relative order only. Re-running replaces
+  previous AI-generated events (`is_human_added=False`) but never touches
+  facilitator-added ones. `aar/analysis/timeline.py::enrich_with_dispatch_times`
+  (Stage 4, fully deterministic, no LLM) attaches `exact_time` to an event
+  only when its title/summary/units/commanders text has a clear, singular
+  best-scoring word-overlap match (≥2 shared significant words, no tie)
+  against a valid dispatch record's description — ambiguous or weak matches
+  are left unset on purpose. This is a documented conservative heuristic, not
+  semantic matching; it will under-attach before it will ever mis-attach.
+  7 new tests covering both stages, incl. explicit regression tests that
+  reconstruction alone never sets `exact_time`, and that timeline enrichment
+  leaves times unset on no-overlap, ambiguous-tie, and invalid-record cases.
+  59/59 tests passing.
 
 ## 9. Open Work / Known Bugs / Blocked / Unverified / Technical Debt
 
