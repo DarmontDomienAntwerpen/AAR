@@ -9,6 +9,7 @@ It raises only when the sheet is genuinely unrecognisable as dispatch data.
 from __future__ import annotations
 
 import datetime as dt
+import re
 import unicodedata
 from pathlib import Path
 
@@ -18,6 +19,20 @@ from aar.config.logging_setup import get_logger
 from aar.schemas.ingestion import DispatchRecordRaw, DispatchSheetRaw
 
 logger = get_logger("ingestion.dispatch_excel")
+
+_ISO_DATE_RE = re.compile(r"^\d{4}-\d{1,2}-\d{1,2}")
+
+
+def _parse_timestamp_value(raw_ts: object) -> pd.Timestamp:
+    """`dayfirst=True` is needed for genuinely ambiguous European-style dates
+    (e.g. "04/03/2026"), but pandas applies it even to unambiguous ISO
+    "YYYY-MM-DD" strings, silently swapping day and month. Only pass
+    dayfirst=True when the value isn't already an unambiguous ISO string or
+    a real datetime — never for a value that already has one true reading."""
+    if isinstance(raw_ts, (pd.Timestamp, dt.datetime, dt.date)):
+        return pd.to_datetime(raw_ts, errors="coerce")
+    dayfirst = not _ISO_DATE_RE.match(str(raw_ts))
+    return pd.to_datetime(raw_ts, errors="coerce", dayfirst=dayfirst)
 
 
 class DispatchExcelParseError(Exception):
@@ -145,7 +160,7 @@ def parse_dispatch_excel(path: str | Path, source_filename: str | None = None) -
             if raw_ts is None or (isinstance(raw_ts, float) and pd.isna(raw_ts)):
                 timestamp = None
             else:
-                parsed = pd.to_datetime(raw_ts, errors="coerce", dayfirst=True)
+                parsed = _parse_timestamp_value(raw_ts)
                 if pd.isna(parsed):
                     is_valid = False
                     validation_error = f"Ongeldig tijdstip: {raw_ts!r}"

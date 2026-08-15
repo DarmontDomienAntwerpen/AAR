@@ -1,3 +1,5 @@
+import datetime as dt
+
 import pandas as pd
 import pytest
 
@@ -27,6 +29,36 @@ def test_parse_valid_workbook(tmp_path):
     assert result.records[0].timestamp is not None
     assert result.records[0].timestamp.hour == 14
     assert result.records[0].is_valid
+
+
+def test_parse_iso_timestamp_not_day_month_swapped(tmp_path):
+    """Regression test: pandas.to_datetime(dayfirst=True) silently swaps day
+    and month even for unambiguous ISO 'YYYY-MM-DD' strings — e.g. it turned
+    '2026-03-04' (4 March) into 4 April. Caught during Phase 11 synthetic
+    fixture testing; must never regress."""
+    df = pd.DataFrame(
+        {
+            "Tijdstip": ["2026-03-04 14:07:00"],
+            "Gebeurtenis": ["Eerste voertuig ter plaatse"],
+            "Eenheid": ["P12"],
+        }
+    )
+    path = _write_xlsx(tmp_path, df)
+    result = parse_dispatch_excel(path)
+    assert result.records[0].timestamp == dt.datetime(2026, 3, 4, 14, 7, 0)
+
+
+def test_parse_ambiguous_european_date_still_uses_dayfirst(tmp_path):
+    df = pd.DataFrame(
+        {
+            "Tijdstip": ["04/03/2026 14:07:00"],
+            "Gebeurtenis": ["Eerste voertuig ter plaatse"],
+            "Eenheid": ["P12"],
+        }
+    )
+    path = _write_xlsx(tmp_path, df)
+    result = parse_dispatch_excel(path)
+    assert result.records[0].timestamp == dt.datetime(2026, 3, 4, 14, 7, 0)
 
 
 def test_parse_reordered_columns(tmp_path):

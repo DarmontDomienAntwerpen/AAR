@@ -136,7 +136,7 @@ change).
 | 8 | Interactive AAR (Streamlit workflow) | DONE |
 | 9 | Re-analysis after correction | DONE |
 | 10 | Archive/search | DONE (built in Phase 1, exercised in Phase 8 smoke test) |
-| 11 | Synthetic end-to-end validation | TODO |
+| 11 | Synthetic end-to-end validation | DONE |
 | 12 | Hardening (full regression) | TODO |
 | 13 | Handoff | TODO |
 
@@ -350,11 +350,55 @@ change).
   a future contributor doesn't "fix" a flaky repeat run by disabling
   caching in production code — the fix belongs in the test harness, not
   the app.
+- Phase 11: `fixtures/synthetic_incident/build_fixture.py` — a fictional
+  woningbrand (Kerkstraat 45, Antwerpen, 2026-03-04, all names/callsigns
+  invented) with 4 commander reports (P12 Adjudant Janssens, P21 Sergeant
+  Willems, O01 Luitenant Peeters, P34 Onderluitenant De Smet) and 1 dispatch
+  sheet, generated on demand via the real template generator + python-docx/
+  pandas rather than checked in as binary files (keeps the fixture
+  auto-consistent with template changes). Engineered to contain spec §63's
+  test conditions A/B/D/F/G/H/I/J; `tests/integration/test_synthetic_incident.py`
+  asserts each one against the full pipeline output. **Conditions C
+  (cross-report conflicting-order detection) and E (unlabelled positive
+  coordination pattern) are explicitly marked UNVERIFIED for the mock
+  provider** — both require genuine cross-report semantic comparison, which
+  the deterministic mock cannot do by design (documented in Phase 4/7 notes
+  already); a dedicated skipped test
+  (`test_synthetic_incident_conditions_c_and_e_require_real_provider`)
+  documents this rather than silently omitting the check, with instructions
+  to verify manually via `AnthropicProvider`. `tests/integration/
+  test_hallucination.py` adds spec §65's adversarial checks (no cause
+  mentioned → none fabricated; no victim mentioned → none invented;
+  conflicting accounts from two reports → both preserved, neither silently
+  dropped/resolved; no narrative time at all → zero events get an exact
+  time). **Real bug found and fixed by this fixture:**
+  `aar/ingestion/dispatch_excel.py` was parsing every timestamp with
+  `pandas.to_datetime(..., dayfirst=True)` unconditionally; pandas applies
+  `dayfirst` even to unambiguous ISO `YYYY-MM-DD` strings, which silently
+  turned `2026-03-04` (4 March) into `2026-04-03` (3 April) — a real
+  timestamp-corruption bug that the earlier Phase 3 unit tests (which only
+  checked `.hour`, never the date) didn't catch. Fixed with
+  `_parse_timestamp_value()`: `dayfirst` is now only applied to strings that
+  don't already match an unambiguous `^\d{4}-\d{1,2}-\d{1,2}` ISO prefix (or
+  are already a real datetime/Timestamp, which has no ambiguity at all).
+  Added a regression test for the exact failure
+  (`test_parse_iso_timestamp_not_day_month_swapped`) plus a test confirming
+  genuinely ambiguous European `DD/MM/YYYY` dates still parse correctly.
+  This directly matters for the absolute-time rule (spec §22) — a
+  corrupted-but-present timestamp is arguably worse than a missing one,
+  since it looks authoritative. 17 new tests. 92/93 tests passing (1
+  documented skip, not a failure).
 
 ## 9. Open Work / Known Bugs / Blocked / Unverified / Technical Debt
 
-- Nothing implemented yet beyond skeleton — this section will fill in as
-  phases complete.
+- **UNVERIFIED (by design, needs real provider):** spec §63 conditions C
+  (conflicting-order detection between two reports) and E (unlabelled
+  positive pattern across reports) are beyond the deterministic mock's
+  reach. Verify manually: set `AAR_LLM_PROVIDER=anthropic` and
+  `ANTHROPIC_API_KEY` in `.env`, run the synthetic fixture (script TBD in
+  Phase 13 handoff, or drive it through the UI), and inspect whether the
+  resulting discussion points include the P12/P21 order conflict and
+  whether a positive finding about the P34/O01 rescue handoff appears.
 - **Expected BLOCKED item (documented in advance):** live `AnthropicProvider`
   calls require `ANTHROPIC_API_KEY` in the environment. If not present when
   Phase 4/13 run, integration tests hitting the real API will be marked
