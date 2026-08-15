@@ -129,7 +129,7 @@ change).
 | 1 | Foundation (project skeleton, config, logging, DB, schemas, Streamlit shell, pytest) | DONE |
 | 2 | Commander DOCX template + parser | DONE |
 | 3 | Dispatch Excel ingestion | DONE |
-| 4 | LLM abstraction (base/mock/anthropic) | TODO |
+| 4 | LLM abstraction (base/mock/anthropic) | DONE |
 | 5 | Report AI extraction | TODO |
 | 6 | Incident reconstruction | TODO |
 | 7 | Analysis engine (findings/lessons) | TODO |
@@ -208,6 +208,42 @@ change).
   service-level incl. duplicate detection). 37/37 tests passing. Manually
   re-verified `streamlit run app.py` boots and serves HTTP 200 with the new
   route wired in.
+- Phase 4: `aar/llm/base.py::LLMProvider` — template-method abstract class:
+  `generate_structured()` handles JSON-parse + Pydantic validation + one
+  retry (passing the previous error back to the provider) and raises
+  `LLMOutputValidationError` if still invalid; subclasses only implement
+  `_complete()` returning raw text. `aar/llm/prompts/system_prompts.py`
+  centralises the mandatory safety/reliability rules (spec §55, Dutch,
+  verbatim translation of all 11 rules incl. hindsight bias and the
+  no-fabricated-timestamps rule) via `build_system_prompt(stage_addendum)`.
+  `aar/llm/mock.py::MockLLMProvider` — deterministic rule-based
+  implementation covering all four pipeline-stage schemas (extraction,
+  reconstruction, findings, lessons); reads a fenced ```json payload block
+  from the user prompt (shared convention documented below) rather than
+  parsing prose. Explicitly documented as a mechanics-testing tool, not a
+  quality stand-in for a real provider. `aar/llm/provider_anthropic.py::
+  AnthropicProvider` — forces JSON-schema-matching output via tool-use
+  (`tool_choice={"type":"tool", ...}`) so the tool's `input` already matches
+  the Pydantic schema; only imports the `anthropic` SDK lazily so it's never
+  loaded unless selected. `aar/llm/factory.py::get_llm_provider()` reads
+  `AAR_LLM_PROVIDER` and instantiates the right one; raises a clear
+  `RuntimeError` if `anthropic` is selected without `ANTHROPIC_API_KEY`
+  rather than silently falling back. **Prompt payload convention** (shared
+  by every stage's prompt builder in `aar/analysis/*.py`, Phase 5+, and by
+  the mock): instructions in prose, then a fenced ` ```json ` block holding
+  the stage's structured input data — both the mock and a real provider
+  read the same block, keeping them interchangeable. 20 new tests (base
+  retry/failure behaviour with a fake provider; mock coverage of all 4
+  stages incl. assumption/uncertainty tagging, "never invents a time not in
+  the text" / "captures a time that IS in the text" pair, conflict →
+  discussion point, went_well → positive finding; factory default/fallback/
+  missing-key-raises). **BLOCKED (documented, not faked):** `AnthropicProvider`
+  has no automated test against the real API — no `ANTHROPIC_API_KEY` is
+  configured in this environment. To verify manually: set
+  `AAR_LLM_PROVIDER=anthropic` and `ANTHROPIC_API_KEY` in `.env`, then run
+  the pipeline (Phase 5+) once built; a `live_llm`-marked pytest hook can be
+  added at that point (pytest.ini already excludes `live_llm` from default
+  runs). 49/49 tests passing.
 
 ## 9. Open Work / Known Bugs / Blocked / Unverified / Technical Debt
 
