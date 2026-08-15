@@ -1,41 +1,81 @@
 {% import "_icons.html" as icons %}
 
+<div class="rounded-lg border border-slate-200 bg-white p-5 mb-5">
+  <h2 class="text-[13px] font-semibold text-ink-900 mb-3.5">Incidentgegevens</h2>
+  <dl class="grid grid-cols-4 gap-3.5 text-[13px]">
+    <div><dt class="text-[11px] uppercase tracking-wide text-slate-400">Datum</dt><dd class="mt-0.5 font-medium text-slate-800 tabular">{{ incident.date|nl_date }}</dd></div>
+    <div><dt class="text-[11px] uppercase tracking-wide text-slate-400">Type</dt><dd class="mt-0.5 font-medium text-slate-800">{{ incident.incident_type.value }}</dd></div>
+    <div class="col-span-2"><dt class="text-[11px] uppercase tracking-wide text-slate-400">Locatie</dt><dd class="mt-0.5 font-medium text-slate-800">{{ incident.location }}</dd></div>
+    {% if incident.description %}
+    <div class="col-span-4"><dt class="text-[11px] uppercase tracking-wide text-slate-400">Omschrijving</dt><dd class="mt-0.5 text-slate-600">{{ incident.description }}</dd></div>
+    {% endif %}
+  </dl>
+</div>
+
+<div class="mb-5">
+  <h2 class="text-[13px] font-semibold text-ink-900 mb-3">Betrokken commandanten</h2>
+  {% if not commander_reports %}
+  <div class="rounded-lg border border-dashed border-slate-300 bg-slate-50/60 px-6 py-8 text-center text-[13px] text-slate-500">
+    Geen verslagen gekoppeld.
+  </div>
+  {% else %}
+  <div class="grid grid-cols-2 gap-4">
+    {% for report in commander_reports %}
+    {% set sections = report.raw_sections or {} %}
+    <div class="rounded-lg border border-slate-200 bg-white overflow-hidden">
+      <div class="flex items-center gap-3 px-4 py-3 bg-slate-50/70 border-b border-slate-100">
+        <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-ink-900 text-white text-[12px] font-mono font-bold">
+          {{ report.callsign[:3] if report.callsign else "?" }}
+        </span>
+        <div class="min-w-0 flex-1">
+          <div class="text-[13.5px] font-semibold text-ink-900 truncate">{{ report.rank }} {{ report.surname }}</div>
+          <div class="text-[11.5px] text-slate-500 truncate">{{ report.callsign }} &middot; {{ report.unit_name }}</div>
+        </div>
+        <span class="shrink-0 rounded px-1.5 py-[3px] text-[10.5px] font-semibold leading-none {{ objective_badge_class(report.objective_achieved) }}">
+          Doel: {{ report.objective_achieved.value if report.objective_achieved else "onbekend" }}
+        </span>
+      </div>
+
+      <div class="p-4 grid grid-cols-2 gap-x-4 gap-y-3">
+        {% for key, field_label in commander_section_fields %}
+        {% set value = sections.get(key, "") %}
+        {% if value %}
+        <div>
+          <div class="text-[10.5px] font-semibold uppercase tracking-wide text-slate-400 mb-0.5">{{ field_label }}</div>
+          <p class="text-[12px] text-slate-600 leading-relaxed line-clamp-2">{{ value }}</p>
+        </div>
+        {% endif %}
+        {% endfor %}
+      </div>
+
+      <details class="border-t border-slate-100 px-4 py-2.5">
+        <summary class="cursor-pointer text-[11.5px] font-medium text-slate-400 hover:text-slate-600 select-none">Volledig verslag lezen</summary>
+        <div class="mt-3 space-y-3">
+          {% for key, field_label in commander_section_fields + [("narrative", "Verloop / verhaal"), ("why", "Waarom"), ("doubts_assumptions", "Twijfels / veronderstellingen"), ("information_position", "Informatiepositie"), ("objective", "Doelstelling"), ("other", "Overig")] %}
+          {% set value = sections.get(key, "") %}
+          {% if value %}
+          <div>
+            <div class="text-[10.5px] font-semibold uppercase tracking-wide text-slate-400 mb-0.5">{{ field_label }}</div>
+            <p class="text-[12.5px] text-slate-600 leading-relaxed whitespace-pre-line">{{ value }}</p>
+          </div>
+          {% endif %}
+          {% endfor %}
+          {% if report.objective_achieved_explanation %}
+          <div>
+            <div class="text-[10.5px] font-semibold uppercase tracking-wide text-slate-400 mb-0.5">Toelichting doelbereik</div>
+            <p class="text-[12.5px] text-slate-600 leading-relaxed">{{ report.objective_achieved_explanation }}</p>
+          </div>
+          {% endif %}
+        </div>
+      </details>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+
 <div class="grid grid-cols-3 gap-5">
   <div class="col-span-2 space-y-5">
-    <div class="rounded-lg border border-slate-200 bg-white p-5">
-      <h2 class="text-[13px] font-semibold text-ink-900 mb-3.5">Incidentgegevens</h2>
-      <dl class="grid grid-cols-2 gap-3.5 text-[13px]">
-        <div><dt class="text-[11px] uppercase tracking-wide text-slate-400">Datum</dt><dd class="mt-0.5 font-medium text-slate-800 tabular">{{ incident.date|nl_date }}</dd></div>
-        <div><dt class="text-[11px] uppercase tracking-wide text-slate-400">Type</dt><dd class="mt-0.5 font-medium text-slate-800">{{ incident.incident_type.value }}</dd></div>
-        <div class="col-span-2"><dt class="text-[11px] uppercase tracking-wide text-slate-400">Locatie</dt><dd class="mt-0.5 font-medium text-slate-800">{{ incident.location }}</dd></div>
-        {% if incident.description %}
-        <div class="col-span-2"><dt class="text-[11px] uppercase tracking-wide text-slate-400">Omschrijving</dt><dd class="mt-0.5 text-slate-600">{{ incident.description }}</dd></div>
-        {% endif %}
-      </dl>
-    </div>
-
-    <div class="rounded-lg border border-slate-200 bg-white overflow-hidden">
-      <h2 class="text-[13px] font-semibold text-ink-900 px-5 pt-4 pb-3">Betrokken commandanten</h2>
-      {% if not commander_reports %}
-      <p class="px-5 pb-4 text-[12.5px] text-slate-500">Geen verslagen gekoppeld.</p>
-      {% else %}
-      <div class="grid grid-cols-[90px_1fr_1fr_120px] gap-3 px-5 py-2 text-[10.5px] font-medium uppercase tracking-wide text-slate-400 border-y border-slate-100 bg-slate-50/60">
-        <div>Callsign</div>
-        <div>Eenheid</div>
-        <div>Naam</div>
-        <div>Doel bereikt</div>
-      </div>
-      {% for report in commander_reports %}
-      <div class="grid grid-cols-[90px_1fr_1fr_120px] gap-3 px-5 py-2.5 text-[12.5px] border-b border-slate-50 last:border-0">
-        <div class="font-mono font-semibold text-ink-900">{{ report.callsign or "—" }}</div>
-        <div class="text-slate-600 truncate">{{ report.unit_name or "—" }}</div>
-        <div class="text-slate-600 truncate">{{ report.rank }} {{ report.surname }}</div>
-        <div class="text-slate-500">{{ report.objective_achieved.value if report.objective_achieved else "—" }}</div>
-      </div>
-      {% endfor %}
-      {% endif %}
-    </div>
-
     <div class="rounded-lg border border-slate-200 bg-white p-5">
       <h2 class="text-[13px] font-semibold text-ink-900 mb-3.5">Situatiesamenvatting</h2>
       <form method="post" action="/incidents/{{ incident.id }}/aar/situation-summary">

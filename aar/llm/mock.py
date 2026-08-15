@@ -149,6 +149,7 @@ class MockLLMProvider(LLMProvider):
             perspectives = []
             commanders = []
             approx_time_text = None
+            attributed_segments = []
             for report_id, report_obs in by_report.items():
                 perspective_text = " ".join(o["content"] for o in report_obs)
                 perspectives.append(
@@ -161,15 +162,19 @@ class MockLLMProvider(LLMProvider):
                 name = report_obs[0].get("commander_display_name")
                 if name and name not in commanders:
                     commanders.append(name)
+                if perspective_text:
+                    attributed_segments.append(
+                        f"{name}: {perspective_text}" if name else perspective_text
+                    )
                 for o in report_obs:
                     if not approx_time_text and o.get("reported_time_text"):
                         approx_time_text = o["reported_time_text"]
 
-            # Show actual reported content instead of a meta-description —
-            # a count of observations isn't a summary of what was observed.
-            summary_text = " ".join(
-                p["perspective_text"] for p in perspectives if p["perspective_text"]
-            ).strip()
+            # Show actual reported content, per commander, instead of a
+            # meta-description or an unattributed run-on paragraph — merging
+            # multiple commanders' wording into one voiceless narrative would
+            # misrepresent it as a single agreed-upon account.
+            summary_text = "  |  ".join(attributed_segments)
             if not summary_text:
                 summary_text = f"Geen inhoud gerapporteerd voor '{label.lower()}'."
 
@@ -265,23 +270,46 @@ class MockLLMProvider(LLMProvider):
 
     # -- Stage 6: lessons ---------------------------------------------------
     def _lessons(self, payload: dict) -> dict:
+        from aar.models.enums import DiscussionOrigin
+        from aar.ui.labels import DISCUSSION_ORIGIN_LABELS_NL
+
         discussion_points = payload.get("discussion_points") or []
+
+        # Group by theme (origin category) instead of emitting one lesson
+        # per discussion point — nine near-identical uncertainty statements
+        # don't need nine near-identical lessons, they need one lesson about
+        # that recurring pattern, evidenced by all of them.
+        by_category: dict[str, list[dict]] = defaultdict(list)
+        for dp in discussion_points:
+            by_category[dp.get("origin_category", "other")].append(dp)
+
         lessons = []
         improvements = []
-        for dp in discussion_points:
-            lesson_title = f"Leerpunt: {dp['title'][:70]}"
+        for category_value, dps in by_category.items():
+            try:
+                category = DiscussionOrigin(category_value)
+            except ValueError:
+                category = DiscussionOrigin.OTHER
+            label = DISCUSSION_ORIGIN_LABELS_NL.get(category, category_value)
+
+            examples = "; ".join(dp["description"][:160] for dp in dps[:3])
+            if len(dps) > 3:
+                examples += f" (en {len(dps) - 3} vergelijkbare vaststelling(en))"
+
+            lesson_title = f"{label} ({len(dps)}x aangetroffen)"
             lessons.append(
                 {
                     "title": lesson_title,
-                    "description": dp["description"],
-                    "discussion_point_titles": [dp["title"]],
+                    "description": examples,
+                    "discussion_point_titles": [dp["title"] for dp in dps],
                 }
             )
             improvements.append(
                 {
-                    "title": f"Mogelijke verbetering n.a.v.: {dp['title'][:60]}",
+                    "title": f"Mogelijke verbetering: {label.lower()}",
                     "description": (
-                        f"Overweeg een concrete werkafspraak rond: {dp['description']}"
+                        f"Overweeg een concrete werkafspraak om herhaling van dit type "
+                        f"situatie ({label.lower()}) te voorkomen."
                     ),
                     "related_lesson_title": lesson_title,
                 }

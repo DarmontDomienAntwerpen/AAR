@@ -8,7 +8,7 @@ from pathlib import Path
 
 from fastapi.templating import Jinja2Templates
 
-from aar.models.enums import DiscussionOrigin, IncidentStatus, IncidentType
+from aar.models.enums import DiscussionOrigin, IncidentStatus, IncidentType, ObjectiveAchieved
 from aar.ui.labels import CONFIDENCE_STATE_LABELS_NL, DISCUSSION_ORIGIN_LABELS_NL, OBSERVATION_TYPE_LABELS_NL
 
 TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
@@ -67,6 +67,24 @@ ORIGIN_BORDER_CLASSES = {
 }
 
 templates.env.globals["origin_border_class"] = lambda o: ORIGIN_BORDER_CLASSES.get(o, "border-l-slate-300")
+
+OBJECTIVE_BADGE_CLASSES = {
+    ObjectiveAchieved.JA: "bg-emerald-50 text-emerald-700",
+    ObjectiveAchieved.GEDEELTELIJK: "bg-amber-50 text-amber-700",
+    ObjectiveAchieved.NEE: "bg-rose-50 text-rose-700",
+    ObjectiveAchieved.NIET_TE_BEOORDELEN: "bg-slate-100 text-slate-500",
+}
+templates.env.globals["objective_badge_class"] = lambda o: OBJECTIVE_BADGE_CLASSES.get(o, "bg-slate-100 text-slate-500")
+
+COMMANDER_SECTION_FIELDS = [
+    ("observations", "Waarnemingen"),
+    ("assessment", "Inschatting"),
+    ("decision", "Beslissing"),
+    ("result", "Resultaat"),
+    ("went_well", "Wat ging goed"),
+    ("went_less_well", "Wat ging minder goed"),
+]
+templates.env.globals["commander_section_fields"] = COMMANDER_SECTION_FIELDS
 templates.env.filters["nl_date"] = _fmt_date
 templates.env.filters["nl_time"] = _fmt_time
 templates.env.filters["nl_datetime"] = _fmt_datetime

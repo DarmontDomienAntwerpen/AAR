@@ -35,7 +35,7 @@
       {% for imp in related %}
       <div class="flex items-start justify-between gap-3">
         <div>
-          <div class="text-xs font-semibold text-slate-700">↳ Mogelijke verbetering: {{ imp.title }}</div>
+          <div class="text-xs font-semibold text-slate-700">↳ {{ imp.title }}</div>
           <div class="text-xs text-slate-500 mt-0.5">{{ imp.description }}</div>
         </div>
         <form method="post" action="/incidents/{{ incident.id }}/aar/improvements/{{ imp.id }}/delete"

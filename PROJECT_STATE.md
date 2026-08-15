@@ -617,6 +617,46 @@ change).
   gated-vs-open behaviour; `.env.example`/HANDOFF.md documentation (the
   `.env.example` entries for `AAR_ACCESS_PASSWORD`/`AAR_SESSION_SECRET`
   were already added). Pick this back up before considering it done.
+- **Phase 18 (post-handoff, user-requested):** further content-structure
+  feedback: "the situation summary reads like a little story — whose point
+  of view is it from?", "lots of duplicates in the lessons", "needs a short
+  summary per commander too, organised in boxes, not just a flat list."
+  Three more fixes:
+  1. **Unattributed narrative voice**: the situation summary/event summaries
+     joined every commander's perspective text into one run-on paragraph
+     with no indication of who said which part — reads as one coherent
+     account when it's actually several, possibly divergent, ones stitched
+     together (undermines the whole multi-perspective-preservation
+     principle). Fixed in `aar/llm/mock.py::_reconstruction`: each
+     commander's segment is now prefixed with their display name and
+     segments are joined with a visible `  |  ` separator.
+  2. **Lesson/improvement duplication**: the mock emitted one lesson +
+     one improvement per discussion point with no grouping — 9 discussion
+     points meant 9 near-identical "Leerpunt: ..." entries. `_lessons()`
+     now clusters by `origin_category` first (one lesson per *theme*, e.g.
+     "Onzekerheid (7x aangetroffen)", not per individual quote), showing up
+     to 3 representative attributed examples plus a count of the rest.
+     Fixed a duplicate-label rendering bug found along the way — the
+     "Mogelijke verbetering: ..." prefix was being added both by the mock
+     (in the title) and again by the template, so the linked-improvement
+     line under a lesson read "Mogelijke verbetering: Mogelijke
+     verbetering: ...".
+  3. **Commander overview restructured into a proper card grid**
+     (`aar/web/templates/aar/_overzicht.html`): was a flat stacked list with
+     just identity + one narrative excerpt; now a 2-column grid of cards,
+     each with a callsign avatar mark, a colour-coded objective-achieved
+     badge (`templating.py::OBJECTIVE_BADGE_CLASSES`), and a labelled
+     mini-grid of key template answers (`commander_section_fields`:
+     Waarnemingen/Inschatting/Beslissing/Resultaat/Wat ging goed/Wat ging
+     minder goed, `line-clamp-2`'d) with a "Volledig verslag lezen"
+     disclosure underneath showing every section verbatim. This is the
+     direct answer to "I don't see who had which callsign/unit" combined
+     with "I want their story too", done as one coherent per-commander unit
+     rather than two separate flat lists.
+  All three fixes are mock-output/UI-structure fixes, not something that
+  requires a real LLM — verified via `scripts/run_synthetic_demo.py` +
+  fresh Playwright screenshots (inspected directly), full suite green.
+  111/112 tests passing (1 documented skip, unrelated).
 
 ## 9. Open Work / Known Bugs / Blocked / Unverified / Technical Debt
 
