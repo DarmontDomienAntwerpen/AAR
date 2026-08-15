@@ -19,6 +19,7 @@ from aar.models import (
     Lesson,
     Observation,
     PositiveFinding,
+    SourceDocument,
 )
 
 # -- reads -------------------------------------------------------------
@@ -78,6 +79,7 @@ def add_manual_event(session: Session, incident: Incident, title: str) -> Incide
 
 def delete_event(session: Session, event: IncidentEvent) -> None:
     session.query(EventPerspective).filter_by(event_id=event.id).delete()
+    session.query(SourceDocument).filter_by(event_id=event.id).update({"event_id": None})
     session.delete(event)
     session.commit()
 

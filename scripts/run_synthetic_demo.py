@@ -1,15 +1,15 @@
 """Loads the synthetic golden-fixture incident (spec §62) into the real app
-database so it can be explored in the running Streamlit app, and runs the
-full analysis pipeline on it using whichever LLM provider is configured in
-.env (AAR_LLM_PROVIDER, defaults to "mock" — no API key needed).
+database so it can be explored in the running app, and runs the full
+analysis pipeline on it using whichever LLM provider is configured in .env
+(AAR_LLM_PROVIDER, defaults to "mock" — no API key needed).
 
 Usage:
     python scripts/run_synthetic_demo.py
 
-Then start the app (`streamlit run app.py`) and open the incident from the
-archive — it will show as "Kerkstraat 45, Antwerpen" / Brand / 2026-03-04.
-Safe to run multiple times: each run creates a new incident rather than
-touching a previous demo run.
+Then start the app (`uvicorn app:app --reload`) and open the incident from
+the archive — it will show as "Kerkstraat 45, Antwerpen" / Brand /
+2026-03-04. Safe to run multiple times: each run creates a new incident
+rather than touching a previous demo run.
 """
 import sys
 from pathlib import Path

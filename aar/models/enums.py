@@ -26,6 +26,7 @@ class IncidentStatus(str, Enum):
 class SourceDocumentType(str, Enum):
     COMMANDER_REPORT = "commander_report"
     DISPATCH_EXCEL = "dispatch_excel"
+    PHOTO_OR_PLAN = "photo_or_plan"
 
 
 class ParseStatus(str, Enum):

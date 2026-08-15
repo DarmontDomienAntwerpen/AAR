@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% import "_components.html" as c %}
+{% import "_icons.html" as icons %}
+{% block title %}Analyse{% endblock %}
+{% block content %}
+
+{{ c.page_header("Analyse", "Start de AI-pijplijn: extractie, reconstructie, dispatchkoppeling, bevindingen en leerpunten.") }}
+
+{% if n_reports == 0 %}
+  {{ c.empty_state("Er zijn nog geen commandantenverslagen geüpload.") }}
+{% else %}
+
+<div class="rounded-2xl border border-slate-200 bg-white p-6">
+  {% if run %}
+    {% if run.status.value == "success" %}
+    <div class="flex items-center gap-3 text-emerald-700">
+      {{ icons.icon('check-circle', 'w-6 h-6') }}
+      <div>
+        <div class="font-semibold">Laatste analyse voltooid</div>
+        <div class="text-sm text-slate-500">{{ run.finished_at|nl_datetime }}</div>
+      </div>
+    </div>
+    <div class="mt-5">
+      <a href="/incidents/{{ incident.id }}/aar"
+         class="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-700 transition">
+        Ga naar interactieve AAR {{ icons.icon('arrow-right', 'w-4 h-4') }}
+      </a>
+    </div>
+    {% elif run.status.value == "error" %}
+    <div class="flex items-start gap-3 text-rose-700">
+      {{ icons.icon('warning', 'w-6 h-6 shrink-0') }}
+      <div>
+        <div class="font-semibold">Analyse mislukt tijdens stap '{{ stage_labels.get(run.stage_reached, run.stage_reached or "onbekend") }}'</div>
+        <div class="text-sm text-rose-600 mt-1">{{ run.error_message }}</div>
+      </div>
+    </div>
+    {% endif %}
+  {% else %}
+    <div class="text-sm text-slate-500 mb-4">Nog geen analyse uitgevoerd voor dit incident.</div>
+  {% endif %}
+
+  <form method="post" action="/incidents/{{ incident.id }}/analysis/run" class="mt-5 pt-5 border-t border-slate-100">
+    <button type="submit"
+            class="inline-flex items-center gap-2 rounded-lg {{ 'bg-brand-600 text-white hover:bg-brand-700' if not run else 'border border-slate-300 text-slate-700 hover:bg-slate-50' }} px-4 py-2.5 text-sm font-semibold shadow-sm transition">
+      {{ icons.icon('sparkle', 'w-4 h-4') }}
+      Analyse {{ "opnieuw " if run else "" }}uitvoeren
+    </button>
+  </form>
+</div>
+
+{% endif %}
+{% endblock %}

@@ -1,0 +1,39 @@
+{% macro badge(text, color="slate") %}
+<span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium
+             bg-{{ color }}-50 text-{{ color }}-700">{{ text }}</span>
+{% endmacro %}
+
+{% macro empty_state(text) %}
+<div class="rounded-xl border border-dashed border-slate-300 bg-slate-50/50 px-6 py-10 text-center text-sm text-slate-500">
+  {{ text }}
+</div>
+{% endmacro %}
+
+{% macro page_header(title, subtitle="") %}
+<div class="mb-8">
+  <h1 class="text-2xl font-bold text-slate-900 tracking-tight">{{ title }}</h1>
+  {% if subtitle %}<p class="mt-1 text-sm text-slate-500">{{ subtitle }}</p>{% endif %}
+</div>
+{% endmacro %}
+
+{% macro evidence(ids, observations_by_id) %}
+  {% set found = [] %}
+  {% for oid in ids %}{% if oid in observations_by_id %}{% set _ = found.append(observations_by_id[oid]) %}{% endif %}{% endfor %}
+  {% if found %}
+  <details class="mt-3 group">
+    <summary class="cursor-pointer text-xs font-medium text-slate-400 hover:text-slate-600 select-none">
+      Bewijs bekijken ({{ found|length }})
+    </summary>
+    <div class="mt-2 space-y-2 border-l-2 border-slate-100 pl-3">
+      {% for obs in found %}
+      <div class="text-xs">
+        <span class="font-medium text-slate-600">{{ obs.attributed_to or "AI-analyse" }}</span>
+        {% if obs.source_passage %}
+        <span class="text-slate-400">&mdash; &bdquo;{{ obs.source_passage }}&rdquo;</span>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </details>
+  {% endif %}
+{% endmacro %}

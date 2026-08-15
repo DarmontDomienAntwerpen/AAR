@@ -12,8 +12,8 @@ An internal, AI-assisted After Action Review (AAR) tool for real fire-service
 incidents. A facilitator:
 
 1. Creates an incident (date, location, type, short description).
-2. Uploads each commander's completed `.docx` report and the dispatch/
-   control-room `.xlsx` export.
+2. Uploads each commander's completed `.docx` report, the dispatch/
+   control-room `.xlsx` export, and optionally reference photos/plans.
 3. Runs the AI analysis pipeline, which extracts structured information from
    each report, reconstructs a shared chronological incident view, and
    proposes discussion points, positive findings, lessons, and improvements.
@@ -75,12 +75,17 @@ that gets committed.
 
 ```bash
 source .venv/bin/activate
-streamlit run app.py
+uvicorn app:app --reload
 ```
 
-Opens in your browser (default `http://localhost:8501`). The database and
-its tables are created automatically on first run — no manual migration
-step. Uploaded original files are stored under `data/uploads/<incident_id>/`.
+Opens at `http://127.0.0.1:8000`. (`python app.py` also works for a quick
+dev run, on port 8000 as well.) The database and its tables are created
+automatically on first request — no manual migration step. Uploaded
+originals (reports, dispatch sheets, photos/plans) are stored under
+`data/uploads/<incident_id>/`.
+
+The UI is a server-rendered FastAPI + Jinja2 + Tailwind app — no separate
+frontend build step, no Node.js required.
 
 ---
 
@@ -124,7 +129,7 @@ source .venv/bin/activate
 pytest                    # full suite — no API key needed, no network calls
 ```
 
-Expect ~95 tests, all passing except one intentionally-skipped test
+Expect ~110 tests, all passing except one intentionally-skipped test
 (`test_synthetic_incident_conditions_c_and_e_require_real_provider`) that
 documents the mock-provider limitation from §6 rather than silently omitting
 the check.
@@ -134,27 +139,29 @@ Test layout:
   pipeline stages, service-layer CRUD.
 - `tests/integration/` — multi-component flows: ingestion → DB, the full
   6-stage pipeline end to end, the synthetic golden fixture, adversarial
-  hallucination checks.
+  hallucination checks, and `tests/integration/test_web_app.py` — the full
+  web UI driven through FastAPI's `TestClient` against the real ASGI app
+  (create incident → upload → analyse → review/correct/re-analyse →
+  finalise → search archive; also covers photo upload/linking).
 
 A real-provider integration test is intentionally not part of the default
 suite (would require a paid API key); see §6 for how to exercise that path
 manually.
 
-### Headless UI smoke test
+### Headless visual smoke test (screenshots)
 
-There's also a standalone script that drives the actual Streamlit app (not
-just the service layer) through the full facilitator workflow using
-Streamlit's own `AppTest` framework — create incident → analyse → review →
-correct → re-analyse → finalise → search archive:
+For an actual rendered-pixels check (not just HTTP status codes), there's a
+Playwright-based script that walks the same flow as `test_web_app.py` and
+saves a screenshot at every screen. Playwright's browser isn't a project
+dependency (it's a one-time ~270MB download), so install it separately if
+you want to use this:
 
 ```bash
-python scripts/ui_smoke_test.py
+pip install playwright && playwright install chromium
+python scripts/run_synthetic_demo.py   # seed data first
+uvicorn app:app &                       # start the server
+python scripts/screenshot_smoke_test.py # screenshots land next to the script
 ```
-
-It's not part of the `pytest` suite because Streamlit's caching is
-process-global and makes repeated `AppTest` runs inside one pytest process
-fragile (see `PROJECT_STATE.md` §8-9 for why). Run it standalone whenever
-you touch anything under `aar/ui/`.
 
 ---
 
@@ -181,8 +188,8 @@ rather than touching a previous one.
 - **Database**: `data/aar.db` (SQLite; path configurable via `AAR_DB_PATH`).
   All incidents, reports, observations, events, findings, lessons, etc.
 - **Uploaded originals**: `data/uploads/<incident_id>/<uuid>_<filename>`.
-  The original `.docx`/`.xlsx` files are kept for traceability even after
-  parsing.
+  The original `.docx`/`.xlsx`/photo/plan files are kept for traceability
+  even after parsing.
 - Both `data/*.db` and `data/uploads/` are gitignored — never committed.
 
 ## 10. Resetting development data
@@ -192,7 +199,13 @@ rm -f data/aar.db
 rm -rf data/uploads
 ```
 
-The next app start recreates an empty database automatically.
+The next app start recreates an empty database automatically. **Also do
+this after pulling a change that alters `aar/models/*.py`** — there is no
+migration system (Alembic) in v1; `Base.metadata.create_all()` only creates
+tables that don't exist yet, it does not alter existing ones. An old
+`data/aar.db` from before a schema change will be missing columns and
+needs to be recreated. This is accepted technical debt for a single-
+operator local MVP tool.
 
 ---
 
@@ -210,7 +223,8 @@ python scripts/generate_template.py
 
 Do not rename section headings or the identification/objective-achieved
 table labels without updating `aar/ingestion/commander_docx.py` in the same
-change — the parser matches on exact (normalised) text.
+change — the parser matches on exact (normalised) text. It's also available
+for download directly from the running app's "Bronnen" screen.
 
 ---
 
@@ -234,14 +248,22 @@ change — the parser matches on exact (normalised) text.
 - **No AI-vs-human audit trail.** Only the current, facilitator-validated
   content is kept — not a history of what the AI originally proposed vs.
   what was changed (spec §50, deliberate).
+- **Photos/plans are reference material only.** They are not analysed by
+  the AI pipeline — purely visual context the facilitator can caption and
+  pin to an incident moment. This was an explicit scope decision when the
+  feature was added (not in the original spec).
+- **No database migration system.** See §10 — reset `data/aar.db` after any
+  model schema change.
 - **`AnthropicProvider` is unverified against the live API** in this build
   environment — see §6.
 
 ## 13. Unresolved issues
 
-None known. All planned phases (0-13) are complete; see `PROJECT_STATE.md`
-§7 for the phase-by-phase status and §9 for the (small, all-documented)
-list of things that need a real API key to verify further.
+None known. All planned phases (0-13) are complete, plus a post-handoff UI
+rewrite (FastAPI/Tailwind, replacing the original Streamlit MVP UI, at the
+user's request) and a photo/plan attachment feature; see
+`PROJECT_STATE.md` §7 for the phase-by-phase status and §9 for the (small,
+all-documented) list of things that need a real API key to verify further.
 
 ---
 
@@ -249,7 +271,7 @@ list of things that need a real API key to verify further.
 
 ```
 AAR/
-├── app.py                       Streamlit entrypoint / page router
+├── app.py                       Entrypoint — re-exports aar.web.app:app
 ├── requirements.txt
 ├── pytest.ini
 ├── .env.example
@@ -265,15 +287,17 @@ AAR/
 │   │                             factory.py, prompts/
 │   ├── analysis/                 extraction, reconstruction, timeline,
 │   │                             findings, lessons, pipeline (orchestrator)
-│   ├── services/                 incident/report/dispatch/analysis/aar
-│   │                             services — all business logic, no
-│   │                             Streamlit code
-│   └── ui/                       thin Streamlit page modules, call
-│                                 services only
+│   ├── services/                 incident/report/dispatch/media/analysis/
+│   │                             aar services — all business logic, no
+│   │                             web-framework code
+│   ├── ui/                       labels.py — Dutch enum display labels,
+│   │                             shared by the web templates
+│   └── web/                      FastAPI app: app.py, deps.py, flash.py,
+│                                 templating.py, routes/*.py,
+│                                 templates/*.html (Jinja2 + Tailwind CDN)
 ├── templates/                    commander_report_template.docx
 ├── fixtures/synthetic_incident/  golden fixture generator
-├── scripts/                      generate_template.py, run_synthetic_demo.py,
-│                                 ui_smoke_test.py
+├── scripts/                      generate_template.py, run_synthetic_demo.py
 ├── data/                         sqlite db + uploads (gitignored)
 └── tests/{unit,integration}/
 ```

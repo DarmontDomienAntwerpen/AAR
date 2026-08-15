@@ -10,7 +10,10 @@ from aar.models.enums import ObjectiveAchieved, ParseStatus, SourceDocumentType
 
 
 class SourceDocument(Base):
-    """A single uploaded original file (commander DOCX or dispatch XLSX)."""
+    """A single uploaded original file (commander DOCX, dispatch XLSX, or a
+    reference photo/plan). `caption` and `event_id` are only meaningful for
+    PHOTO_OR_PLAN documents — reference material the facilitator can caption
+    and optionally pin to a specific incident moment."""
 
     __tablename__ = "source_documents"
 
@@ -27,6 +30,8 @@ class SourceDocument(Base):
         Enum(ParseStatus, native_enum=False, length=16), default=ParseStatus.PENDING
     )
     parse_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    caption: Mapped[str] = mapped_column(Text, default="")
+    event_id: Mapped[int | None] = mapped_column(ForeignKey("incident_events.id"), nullable=True)
 
     incident: Mapped["Incident"] = relationship(back_populates="source_documents")
     commander_report: Mapped["CommanderReport | None"] = relationship(
@@ -35,6 +40,7 @@ class SourceDocument(Base):
     dispatch_records: Mapped[list["DispatchRecord"]] = relationship(
         back_populates="source_document", cascade="all, delete-orphan"
     )
+    event: Mapped["IncidentEvent | None"] = relationship()
 
 
 class CommanderReport(Base):

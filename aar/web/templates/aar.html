@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% set content_width = "6xl" %}
+{% import "_components.html" as c %}
+{% import "_icons.html" as icons %}
+{% block title %}Interactieve AAR{% endblock %}
+{% block content %}
+
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Interactieve AAR</h1>
+    <p class="mt-1 text-sm text-slate-500">{{ incident.location }} &middot; {{ incident.date|nl_date }}</p>
+  </div>
+  <a href="/incidents/{{ incident.id }}/final"
+     class="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-700 transition">
+    Definitieve AAR {{ icons.icon('arrow-right', 'w-4 h-4') }}
+  </a>
+</div>
+
+<div class="border-b border-slate-200 mb-8">
+  <nav class="flex gap-6 -mb-px">
+    {% for key, label in [("overzicht","Overzicht"), ("verloop","Incidentverloop"), ("bespreken","Te bespreken"), ("positief","Positieve punten"), ("leerpunten","Leerpunten")] %}
+    <a href="/incidents/{{ incident.id }}/aar?tab={{ key }}"
+       class="border-b-2 pb-3 text-sm font-medium transition
+              {{ 'border-brand-600 text-brand-700' if tab == key else 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300' }}">
+      {{ label }}
+      {% if key == "bespreken" and discussion_points %}<span class="ml-1 text-xs text-slate-400">{{ discussion_points|length }}</span>{% endif %}
+      {% if key == "positief" and positive_findings %}<span class="ml-1 text-xs text-slate-400">{{ positive_findings|length }}</span>{% endif %}
+      {% if key == "leerpunten" and lessons %}<span class="ml-1 text-xs text-slate-400">{{ lessons|length }}</span>{% endif %}
+    </a>
+    {% endfor %}
+  </nav>
+</div>
+
+{% if tab == "overzicht" %}
+  {% include "aar/_overzicht.html" %}
+{% elif tab == "verloop" %}
+  {% include "aar/_verloop.html" %}
+{% elif tab == "bespreken" %}
+  {% include "aar/_bespreken.html" %}
+{% elif tab == "positief" %}
+  {% include "aar/_positief.html" %}
+{% elif tab == "leerpunten" %}
+  {% include "aar/_leerpunten.html" %}
+{% endif %}
+
+{% endblock %}

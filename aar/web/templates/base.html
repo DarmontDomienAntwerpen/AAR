@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="nl" class="h-full bg-slate-50">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}AAR Tool{% endblock %} — Brandweer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
+          colors: {
+            brand: { 50:'#eef2ff',100:'#e0e7ff',500:'#6366f1',600:'#4f46e5',700:'#4338ca' }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-feature-settings: "cv11", "ss01"; }
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+  </style>
+</head>
+<body class="h-full font-sans text-slate-900 antialiased">
+  {% import "_icons.html" as icons %}
+  <div class="flex h-full">
+    <aside class="w-72 shrink-0 border-r border-slate-200 bg-white flex flex-col">
+      <div class="px-6 py-6 border-b border-slate-100">
+        <a href="/" class="flex items-center gap-2.5">
+          <span class="text-2xl">🚒</span>
+          <div class="leading-tight">
+            <div class="font-bold text-slate-900 tracking-tight">AAR Tool</div>
+            <div class="text-xs text-slate-400 font-medium">Brandweer &middot; interne evaluatie</div>
+          </div>
+        </a>
+      </div>
+
+      <nav class="px-4 py-4 space-y-1">
+        <a href="/"
+           class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition
+                  {{ 'bg-brand-50 text-brand-700' if active_nav == 'archive' else 'text-slate-600 hover:bg-slate-50 hover:text-slate-900' }}">
+          {{ icons.icon('archive', 'w-5 h-5') }}
+          Archief
+        </a>
+        <a href="/incidents/new"
+           class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition
+                  {{ 'bg-brand-50 text-brand-700' if active_nav == 'new_incident' else 'text-slate-600 hover:bg-slate-50 hover:text-slate-900' }}">
+          {{ icons.icon('plus', 'w-5 h-5') }}
+          Nieuw incident
+        </a>
+      </nav>
+
+      {% if incident %}
+      <div class="mt-2 px-4">
+        <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+          <div class="text-sm font-semibold text-slate-900 truncate">{{ incident.location }}</div>
+          <div class="text-xs text-slate-500 mt-0.5">{{ incident.date|nl_date }} &middot; {{ incident.incident_type.value }}</div>
+          <span class="inline-flex items-center mt-2 rounded-full px-2 py-0.5 text-xs font-medium {{ status_badge_class(incident.status) }}">
+            {{ status_label(incident.status) }}
+          </span>
+        </div>
+      </div>
+
+      <nav class="px-4 py-4 space-y-1">
+        <div class="px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">Werkstroom</div>
+        <a href="/incidents/{{ incident.id }}/sources"
+           class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition
+                  {{ 'bg-brand-50 text-brand-700' if active_nav == 'sources' else 'text-slate-600 hover:bg-slate-50 hover:text-slate-900' }}">
+          {{ icons.icon('upload', 'w-5 h-5') }}
+          Bronnen
+        </a>
+        <a href="/incidents/{{ incident.id }}/analysis"
+           class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition
+                  {{ 'bg-brand-50 text-brand-700' if active_nav == 'analysis' else 'text-slate-600 hover:bg-slate-50 hover:text-slate-900' }}">
+          {{ icons.icon('chart', 'w-5 h-5') }}
+          Analyse
+        </a>
+        <a href="/incidents/{{ incident.id }}/aar"
+           class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition
+                  {{ 'bg-brand-50 text-brand-700' if active_nav == 'aar' else 'text-slate-600 hover:bg-slate-50 hover:text-slate-900' }}">
+          {{ icons.icon('chat', 'w-5 h-5') }}
+          Interactieve AAR
+        </a>
+        <a href="/incidents/{{ incident.id }}/final"
+           class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition
+                  {{ 'bg-brand-50 text-brand-700' if active_nav == 'final' else 'text-slate-600 hover:bg-slate-50 hover:text-slate-900' }}">
+          {{ icons.icon('document', 'w-5 h-5') }}
+          Definitieve AAR
+        </a>
+      </nav>
+      {% endif %}
+
+      <div class="mt-auto px-6 py-4 border-t border-slate-100 text-xs text-slate-400">
+        Interne tool &middot; v1
+      </div>
+    </aside>
+
+    <main class="flex-1 overflow-y-auto">
+      <div class="max-w-{{ content_width|default('5xl') }} mx-auto px-10 py-10">
+        {% set flash = request.query_params.get('flash') %}
+        {% set flash_type = request.query_params.get('flash_type', 'success') %}
+        {% if flash %}
+        <div class="mb-6 rounded-xl border px-4 py-3 text-sm font-medium
+                    {{ 'bg-rose-50 border-rose-200 text-rose-700' if flash_type == 'error'
+                       else 'bg-amber-50 border-amber-200 text-amber-800' if flash_type == 'warning'
+                       else 'bg-emerald-50 border-emerald-200 text-emerald-700' }}">
+          {{ flash }}
+        </div>
+        {% endif %}
+
+        {% block content %}{% endblock %}
+      </div>
+    </main>
+  </div>
+</body>
+</html>

@@ -3,7 +3,10 @@
 Living engineering source of truth. Read before starting a phase; update after
 completing or materially changing one. Last updated: 2026-08-15 — **all
 phases (0-13) complete, Definition of Done satisfied** (see §11 for the
-checklist and the two explicitly-documented UNVERIFIED items).
+checklist and the two explicitly-documented UNVERIFIED items), **plus two
+post-handoff changes made at the user's explicit request: a full UI rewrite
+from Streamlit to FastAPI+Jinja2+Tailwind (Phase 14), and a photo/plan
+attachment feature (Phase 15).** See §7 and §8 for details.
 
 ---
 
@@ -40,7 +43,7 @@ deviate from it without documenting why here).
 | Decision | Choice | Rationale |
 |---|---|---|
 | Language/runtime | Python 3.11+ (dev machine has 3.14.5, compatible) | spec requirement |
-| UI | Streamlit, multipage via `st.session_state` router in `app.py` | spec requirement, simplest for MVP |
+| UI | ~~Streamlit~~ **FastAPI + Jinja2 + Tailwind (CDN) + a little vanilla JS** — changed in Phase 14 at the user's explicit request ("modern, lighter, professional... not Streamlit or Gradio"). Server-rendered HTML, no Node build step, no SPA framework. | spec originally said Streamlit for MVP simplicity; superseded by direct user feedback after seeing it running — see Phase 14 notes in §8 for the full rationale and alternatives considered |
 | DB | SQLite file at `data/aar.db` via SQLAlchemy 2.0 ORM | spec requirement |
 | Validation | Pydantic v2 at every boundary (LLM output, ingestion, forms) | spec requirement |
 | DOCX | `python-docx`, heading-tagged sections parsed by exact heading text | deterministic structure needed for reliable parsing |
@@ -57,7 +60,7 @@ deviate from it without documenting why here).
 
 ```
 AAR/
-├── app.py                     # Streamlit entrypoint / router
+├── app.py                     # entrypoint — re-exports aar.web.app:app (uvicorn app:app)
 ├── requirements.txt
 ├── pytest.ini
 ├── .env.example
@@ -73,17 +76,25 @@ AAR/
 │   ├── llm/                    # base.py, mock.py, provider_anthropic.py, prompts/
 │   ├── analysis/               # extraction, normalisation, reconstruction,
 │   │                           # timeline, findings, lessons, pipeline orchestrator
-│   ├── services/                # incident_service, report_service, analysis_service, archive_service
-│   └── ui/                      # streamlit page modules (thin, call services only)
+│   ├── services/                # incident/report/dispatch/media/analysis/aar services
+│   ├── ui/                      # labels.py only — Dutch enum display labels,
+│   │                             shared by the web templates (Streamlit pages removed
+│   │                             in Phase 14; this dir kept just for the label module)
+│   └── web/                     # FastAPI app (Phase 14): app.py, deps.py, flash.py,
+│                                 templating.py, routes/*.py, templates/*.html
 ├── templates/                   # commander_report_template.docx generator + generated file
-├── fixtures/synthetic_incident/ # golden fixture: 4 DOCX reports, 1 dispatch xlsx, expectations.json
+├── fixtures/synthetic_incident/ # golden fixture: 4 DOCX reports, 1 dispatch xlsx
 ├── data/                        # sqlite db + uploaded originals (gitignored)
-└── tests/{unit,integration,fixtures}/
+└── tests/{unit,integration}/
 ```
 
 ## 5. Data Model (conceptual — see `aar/models/*.py` for actual columns)
 
-`Incident(1) -- (N) SourceDocument -- (0..1) CommanderReport`
+`Incident(1) -- (N) SourceDocument -- (0..1) CommanderReport` (SourceDocument
+also covers dispatch XLSX and, since Phase 15, `PHOTO_OR_PLAN` reference
+files — the latter carry a `caption` and an optional `event_id` FK so a
+photo can be pinned to a specific `IncidentEvent`; photos are never parsed
+or fed to the AI pipeline)
 `Incident(1) -- (N) DispatchRecord`
 `Incident(1) -- (N) Observation` (each tagged FACT/HUMAN_OBSERVATION/ASSUMPTION/UNCERTAINTY/CONFLICT/AI_OBSERVATION, linked to source report + source passage)
 `Incident(1) -- (N) IncidentEvent` (chronological moment) `-- (N) EventPerspective` (per-commander view of that moment, linked to Observations)
@@ -141,6 +152,8 @@ change).
 | 11 | Synthetic end-to-end validation | DONE |
 | 12 | Hardening (full regression) | DONE |
 | 13 | Handoff | DONE |
+| 14 | *(post-handoff)* UI rewrite: Streamlit → FastAPI + Jinja2 + Tailwind | DONE |
+| 15 | *(post-handoff)* Photo/plan attachments | DONE |
 
 ## 8. Completed Work
 
@@ -422,6 +435,101 @@ change).
   94/95 tests passing (1 documented skip). Re-ran the full headless UI
   smoke test (`scripts/ui_smoke_test.py`) after all hardening changes —
   still passes end to end.
+- **Phase 14 (post-handoff, user-requested):** after seeing the finished
+  Streamlit MVP running, the user asked for a "modern, lighter,
+  professional" interface, explicitly ruling out Streamlit/Gradio, and
+  asked for a recommendation aimed at looking good presented to colleagues.
+  Presented three options (NiceGUI; FastAPI+HTMX+Tailwind; FastAPI+React);
+  user asked for a recommendation, so **FastAPI + Jinja2 + Tailwind (CDN) +
+  a little vanilla JS** was chosen and built — full design control for a
+  genuinely polished look without a Node/React build pipeline, and the
+  entire existing `aar/services/*` / `aar/analysis/*` / `aar/models/*`
+  business logic layer carries over completely unchanged (only the view
+  layer was rebuilt, proving out the original layering decision from
+  Phase 1). New `aar/web/` package: `app.py` (FastAPI factory + lifespan-
+  based DB init, replacing the deprecated `@app.on_event`), `deps.py`
+  (per-request DB session + shared `incident_or_404` helper), `flash.py`
+  (stateless flash messages via URL query params — no session/cookie
+  middleware needed for a single-operator local tool), `templating.py`
+  (Jinja2 env + Dutch-formatting filters, reusing `aar/ui/labels.py`
+  unchanged), `templates/_icons.html` (hand-authored inline SVG icon set —
+  no icon-font CDN dependency), `templates/_components.html` (badge/empty-
+  state/evidence-disclosure macros shared across pages), `templates/base.html`
+  (sidebar-nav shell, Tailwind config with a custom `brand` color + Inter
+  font via Google Fonts CDN), and one route module + template set per
+  screen (`archive`, `incidents` [new-incident form], `sources`,
+  `analysis`, `interactive_aar` [5 tabs: Overzicht/Incidentverloop/Te
+  bespreken/Positieve punten/Leerpunten, each a real page-load, not a JS
+  partial-swap — deliberately simple and robust over SPA-like polish given
+  the time budget], `final_aar`). Root `app.py` now just re-exports
+  `aar.web.app:app`; run with `uvicorn app:app`. Removed the six Streamlit
+  page modules from `aar/ui/` (kept only `labels.py`, which the new
+  templates still import), removed `streamlit` from `requirements.txt`, and
+  removed the now-obsolete `scripts/ui_smoke_test.py` (Streamlit `AppTest`-
+  based). **Two real bugs found and fixed while building this:** (1) module
+  name collision — a route module was named `aar.py`, which as
+  `aar.web.routes.aar` silently shadowed the top-level `aar` package name
+  inside `app.py`'s local namespace after `from aar.web.routes import aar`;
+  renamed to `interactive_aar.py` before it could cause a real failure. (2)
+  Starlette/FastAPI treats an **empty-valued form field as absent** for a
+  required `Form(...)` parameter — confirmed independently via raw `curl`
+  against the running dev server, not just the test client — so a real user
+  submitting a blank required text input (e.g. "Locatie" on the new-incident
+  form) got a raw FastAPI 422 JSON error instead of the intended Dutch
+  validation message. Fixed everywhere by switching required user-typed
+  text fields from `Form(...)` to `Form("")` and validating blankness
+  explicitly in the handler (`_require_title()` helper in
+  `interactive_aar.py`; inline check in `incidents.py`) — now surfaces as a
+  normal flash-message error on the correct page. New
+  `tests/integration/test_web_app.py`: the full facilitator flow driven
+  through FastAPI's `TestClient` against the real ASGI app (not mocked) —
+  create → upload 4 reports + dispatch → analyse → all 5 AAR tabs → add
+  correction → re-analyse → finalize → archive search finds it — plus the
+  empty-location-rejected and duplicate-upload-warning regression cases.
+  **Visual verification:** no real browser in this environment, so
+  installed Playwright + Chromium (one-time, not a project dependency) and
+  captured full-page screenshots of all 9 screens against the seeded demo
+  incident; inspected them directly (not just asserted no-exception) to
+  confirm the sidebar/cards/badges/tabs actually render as designed in both
+  the archive list and every AAR tab. Checked in as
+  `scripts/screenshot_smoke_test.py` (parameterised by base URL/incident id)
+  for repeatable use — documented in `HANDOFF.md` §7 as an optional install
+  since Playwright's browser download is heavy. 110/111 tests passing (1
+  documented skip, same as before — this phase didn't touch pipeline logic).
+- **Phase 15 (post-handoff, user-requested):** user asked, mid-rewrite, for
+  the ability to attach photos/plans and asked where they'd surface in the
+  AAR — answered (general incident-level upload, shown in an "Overzicht"
+  gallery, optionally linkable to a specific incident moment in
+  "Incidentverloop"), then asked to "just build it in". Not in the original
+  spec — an explicit, scoped, user-approved addition, not silent scope
+  creep. Extended `SourceDocument` (rather than a new table) with
+  `SourceDocumentType.PHOTO_OR_PLAN`, a nullable `caption` field, and a
+  nullable `event_id` FK to `incident_events` — photos are uploaded/stored/
+  deduplicated through the exact same mechanism as reports/dispatch sheets,
+  just without a parsing step (`parse_status` is set straight to `PARSED`).
+  Deliberately **not** fed to the AI pipeline — pure reference material, an
+  explicitly scoped decision recorded here so it isn't mistaken for an
+  oversight later. New `aar/services/media_service.py` (`ingest_photo`
+  with an extension allowlist — `.jpg/.jpeg/.png/.webp/.pdf` — and the same
+  sha256 dedup pattern as `report_service.py`; `list_photos`; `set_caption`;
+  `link_to_event`/unlink via `event=None`; `delete_photo`, which removes
+  both the DB row and the file on disk). `aar/services/aar_service.py::
+  delete_event` updated to null out any photos' `event_id` before deleting
+  the event (SQLite doesn't enforce FK constraints by default, so this was
+  a real dangling-reference risk, not just tidiness — caught by writing
+  `test_deleting_event_unlinks_but_keeps_photo` before it could ship as a
+  latent bug). New `aar/web/routes/media.py`: upload, serve
+  (`GET .../media/{doc_id}`, content-type inferred via `mimetypes`),
+  caption, link (photo id now passed in the form body rather than the URL
+  path — the first draft tried rewriting the form's POST target with inline
+  JS from a `<select>`, which was fragile; moved the id into the request
+  body instead and deleted the JS), and delete. UI: a third upload card on
+  the Sources screen (thumbnail grid, inline-editable caption, delete);
+  an "Beeldmateriaal" gallery on the AAR Overzicht tab; per-event thumbnail
+  strip + an unlinked-photos picker on the Incidentverloop tab. 7 new unit
+  tests for `media_service.py` (incl. the unlink-on-event-delete case and
+  an unsupported-extension rejection) plus photo-upload/link/serve coverage
+  folded into `test_web_app.py`'s full-flow test. 110/111 tests passing.
 
 ## 9. Open Work / Known Bugs / Blocked / Unverified / Technical Debt
 
@@ -463,7 +571,7 @@ change).
 
 | Requirement | Status |
 |---|---|
-| Application starts | DONE — `streamlit run app.py`, verified clean-slate boot to HTTP 200 and via headless `AppTest` walkthrough |
+| Application starts | DONE — `uvicorn app:app` (post-Phase-14 FastAPI UI), verified clean-slate boot to HTTP 200, via `TestClient`-driven full-flow tests, and via Playwright screenshots of every screen |
 | Incident can be created | DONE — Screen 2, tested |
 | Multiple commander reports can be uploaded | DONE — Screen 3, tested with 4 in the golden fixture |
 | Reports are parsed | DONE — deterministic DOCX parser, 11 edge-case tests |
