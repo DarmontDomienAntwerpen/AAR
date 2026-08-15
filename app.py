@@ -5,7 +5,8 @@ import streamlit as st
 
 from aar.config.logging_setup import configure_logging, get_logger
 from aar.db.session import get_engine, get_session, init_db
-from aar.ui import archive_page, new_incident_page, placeholder_page
+from aar.services.incident_service import get_incident
+from aar.ui import archive_page, new_incident_page, placeholder_page, sources_page
 
 configure_logging()
 logger = get_logger("app")
@@ -33,7 +34,12 @@ try:
     elif route == "new_incident":
         new_incident_page.render(session)
     elif route == "sources":
-        placeholder_page.render("Bronnen uploaden", "Fase 2/3 — DOCX- en Excel-ingestie")
+        incident = get_incident(session, st.session_state.get("incident_id"))
+        if incident is None:
+            st.session_state["route"] = "archive"
+            st.rerun()
+        else:
+            sources_page.render(session, incident)
     elif route == "analysis":
         placeholder_page.render("Analyse", "Fase 4-7 — AI-pijplijn")
     elif route == "aar":

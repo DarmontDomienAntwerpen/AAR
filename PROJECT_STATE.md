@@ -128,7 +128,7 @@ change).
 | 0 | Inspect & plan | DONE |
 | 1 | Foundation (project skeleton, config, logging, DB, schemas, Streamlit shell, pytest) | DONE |
 | 2 | Commander DOCX template + parser | DONE |
-| 3 | Dispatch Excel ingestion | TODO |
+| 3 | Dispatch Excel ingestion | DONE |
 | 4 | LLM abstraction (base/mock/anthropic) | TODO |
 | 5 | Report AI extraction | TODO |
 | 6 | Incident reconstruction | TODO |
@@ -185,6 +185,29 @@ change).
   cases incl. corrupt file, wrong document, missing identification, empty/
   long narrative, unusual punctuation, Dutch uncertainty phrasing preserved
   verbatim; 3 service-level incl. duplicate detection). 28/28 tests passing.
+- Phase 3: `aar/ingestion/dispatch_excel.py::parse_dispatch_excel` — header
+  detection via a normalised synonym lookup (`TIMESTAMP_SYNONYMS`,
+  `EVENT_SYNONYMS`, `UNIT_SYNONYMS`), so column order and exact naming don't
+  matter as long as a header is recognisable. Picks the best-matching sheet
+  when a workbook has multiple. Blank rows are skipped silently; rows with
+  an unparsable timestamp are kept with `is_valid=False` and a message
+  (never discarded); a workbook with no recognisable event/description
+  column raises `DispatchExcelParseError` with the recognised columns
+  listed, an empty sheet returns `records=[]` with a warning instead of
+  raising. `aar/services/dispatch_service.py::ingest_dispatch_excel` mirrors
+  the commander-report service (dedup by sha256, stores original file,
+  persists `DispatchRecord` rows including invalid ones). Introduced shared
+  `aar/services/errors.py::DuplicateSourceError` (used by both ingestion
+  services — was `DuplicateReportError`, renamed since dispatch uploads hit
+  the same duplicate-detection path). Screen 3 (`aar/ui/sources_page.py`)
+  now fully wired into `app.py`: upload commander DOCX / dispatch XLSX via
+  forms, see per-file parse status and warnings, "Analyse starten" button
+  (routes to the still-placeholder analysis screen — pipeline lands in
+  Phases 4-7). 9 new tests (7 Excel parser edge cases incl. empty workbook,
+  unsupported layout, invalid/missing timestamp, reordered columns; 2
+  service-level incl. duplicate detection). 37/37 tests passing. Manually
+  re-verified `streamlit run app.py` boots and serves HTTP 200 with the new
+  route wired in.
 
 ## 9. Open Work / Known Bugs / Blocked / Unverified / Technical Debt
 

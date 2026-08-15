@@ -13,12 +13,9 @@ from aar.config.logging_setup import get_logger
 from aar.config.settings import get_settings
 from aar.ingestion.commander_docx import CommanderReportParseError, parse_commander_report
 from aar.models import CommanderReport, Incident, ParseStatus, SourceDocument, SourceDocumentType
+from aar.services.errors import DuplicateSourceError
 
 logger = get_logger("services.report_service")
-
-
-class DuplicateReportError(Exception):
-    """Raised when the exact same file was already uploaded for this incident."""
 
 
 def _uploads_dir(incident_id: int) -> Path:
@@ -46,7 +43,7 @@ def ingest_commander_report(
         )
     ).scalar_one_or_none()
     if existing is not None:
-        raise DuplicateReportError(
+        raise DuplicateSourceError(
             f"Dit bestand ('{filename}') werd al eerder geüpload als "
             f"'{existing.original_filename}'."
         )

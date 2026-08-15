@@ -5,7 +5,8 @@ from docx import Document
 
 from aar.ingestion.commander_docx import generate_commander_report_template
 from aar.models import CommanderReport, ParseStatus, SourceDocument
-from aar.services.report_service import DuplicateReportError, ingest_commander_report
+from aar.services.errors import DuplicateSourceError
+from aar.services.report_service import ingest_commander_report
 
 
 def _make_filled_docx_bytes(tmp_path: Path, callsign: str = "P12") -> bytes:
@@ -41,7 +42,7 @@ def test_ingest_duplicate_report_raises(tmp_path, session, sample_incident, monk
     file_bytes = _make_filled_docx_bytes(tmp_path)
     ingest_commander_report(session, sample_incident, file_bytes, "p12.docx")
 
-    with pytest.raises(DuplicateReportError):
+    with pytest.raises(DuplicateSourceError):
         ingest_commander_report(session, sample_incident, file_bytes, "p12_copy.docx")
 
     assert session.query(SourceDocument).count() == 1
