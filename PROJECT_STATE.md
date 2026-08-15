@@ -127,7 +127,7 @@ change).
 |---|---|---|
 | 0 | Inspect & plan | DONE |
 | 1 | Foundation (project skeleton, config, logging, DB, schemas, Streamlit shell, pytest) | DONE |
-| 2 | Commander DOCX template + parser | TODO |
+| 2 | Commander DOCX template + parser | DONE |
 | 3 | Dispatch Excel ingestion | TODO |
 | 4 | LLM abstraction (base/mock/anthropic) | TODO |
 | 5 | Report AI extraction | TODO |
@@ -163,6 +163,28 @@ change).
   are explicit placeholders pending Phases 2/3/8 (not faked). 14 unit tests
   passing (`pytest -q`). Manually verified `streamlit run app.py` boots and
   serves HTTP 200.
+- Phase 2: `aar/ingestion/commander_docx.py` — template generator
+  (`generate_commander_report_template`, also runnable via
+  `scripts/generate_template.py`; checked-in output at
+  `templates/commander_report_template.docx`) and deterministic parser
+  (`parse_commander_report`). Template uses two label/value tables
+  (identification; objective-achieved) plus 12 fixed `Heading 1` sections
+  matching spec §16 B-H,J-N exactly (`SECTION_HEADINGS`, asserted equal to
+  `COMMANDER_REPORT_SECTION_KEYS` at import time so the two can't drift).
+  Parsing is fully deterministic — no LLM involved — matching happens on
+  normalised heading/label text, not semantics; corrupt files or
+  unrecognisable documents raise `CommanderReportParseError`, while
+  missing/empty optional content produces non-fatal warnings instead of
+  failing. `aar/services/report_service.py::ingest_commander_report` stores
+  the original file under `data/uploads/<incident_id>/`, hashes it
+  (sha256) for duplicate-upload detection (raises `DuplicateReportError`
+  without creating a second row), and persists `SourceDocument` +
+  `CommanderReport`. A parse failure still creates the `SourceDocument`
+  (status=ERROR, message recorded) so nothing is silently discarded, but no
+  `CommanderReport` row is created for it. 17 new tests (11 parser edge
+  cases incl. corrupt file, wrong document, missing identification, empty/
+  long narrative, unusual punctuation, Dutch uncertainty phrasing preserved
+  verbatim; 3 service-level incl. duplicate detection). 28/28 tests passing.
 
 ## 9. Open Work / Known Bugs / Blocked / Unverified / Technical Debt
 
