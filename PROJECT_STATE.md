@@ -133,9 +133,9 @@ change).
 | 5 | Report AI extraction | DONE |
 | 6 | Incident reconstruction | DONE |
 | 7 | Analysis engine (findings/lessons) | DONE |
-| 8 | Interactive AAR (Streamlit workflow) | TODO |
-| 9 | Re-analysis after correction | TODO |
-| 10 | Archive/search | TODO |
+| 8 | Interactive AAR (Streamlit workflow) | DONE |
+| 9 | Re-analysis after correction | DONE |
+| 10 | Archive/search | DONE (built in Phase 1, exercised in Phase 8 smoke test) |
 | 11 | Synthetic end-to-end validation | TODO |
 | 12 | Hardening (full regression) | TODO |
 | 13 | Handoff | TODO |
@@ -304,6 +304,52 @@ change).
   incl. a no-reports failure path and a rerun-doesn't-duplicate check, plus
   an explicit assertion that no event ends up with a fabricated exact time
   when no dispatch data was supplied). 67/67 tests passing.
+- Phase 8-9: `aar/services/aar_service.py` — all facilitator CRUD (edit/add/
+  delete events, discussion points, positive findings, lessons,
+  improvements; `add_correction` which also bumps `Incident.status` from
+  ANALYZED to IN_REVIEW; `default_situation_summary`/`update_situation_summary`;
+  `finalize_incident`). Deliberate scope cut, documented here per spec §48's
+  "if practical": event merge/split is NOT implemented — add/remove/edit
+  covers the facilitator's practical needs for v1 without the extra
+  complexity of re-deriving perspectives/evidence links across a merge.
+  `aar/services/analysis_service.py` wraps `get_llm_provider()` +
+  `run_analysis()` for the UI. `aar/ui/labels.py` centralises Dutch display
+  labels for enums so no English/AI terminology leaks into the facilitator
+  UI (spec §57, §69). Built out Screens 4-6 for real (replacing the Phase
+  1-3 placeholders): `analysis_page.py` (trigger pipeline, show per-stage
+  Dutch error on failure), `aar_page.py` (tabbed interactive workspace —
+  Overzicht/Incidentverloop/Te bespreken/Positieve punten/Leerpunten per
+  spec §46 — with inline edit/delete forms, evidence-inspection expanders,
+  per-event/point correction notes, and an explicit "Analyse opnieuw
+  uitvoeren" re-analysis trigger fulfilling spec §49), `final_aar_page.py`
+  (read-oriented compiled AAR + "Markeer als afgerond"). Removed the now-
+  dead `placeholder_page.py`. **UI verification method:** no real browser is
+  available in this environment, so the full facilitator flow was verified
+  headlessly with Streamlit's own `AppTest` framework (`streamlit.testing.v1
+  .AppTest`) rather than skipped — this actually runs `app.py` and clicks
+  real widgets, not a mock. Script checked in at `scripts/ui_smoke_test.py`
+  (run standalone: `python scripts/ui_smoke_test.py`; not part of the
+  pytest suite because `st.cache_resource`/engine singletons make repeated
+  AppTest runs inside one pytest process fragile — see note below) walked: archive →
+  new incident → create → sources (seeded a commander report directly via
+  the service layer, since AppTest can't simulate real file uploads) →
+  analysis → run pipeline → interactive AAR (all 5 tabs render without
+  exception) → add a correction on an event → re-run analysis (Phase 9 path)
+  → final AAR → finalize → back to archive → search finds the finalized
+  incident by free text. All steps passed with zero exceptions. 8 new
+  pytest unit/integration tests for the service layer (`test_aar_service.py`,
+  `test_analysis_service.py`). 74/74 automated tests passing.
+  **Known engineering note (not a bug, a documented constraint):** the
+  AppTest-based UI walkthrough is not wired into the regular `pytest`
+  suite — `st.cache_resource` and the `aar/db/session.py` engine singleton
+  are process-global, so a second `AppTest.from_file()` run in the same
+  pytest process can silently reuse a previous run's cached engine/db
+  even after `AAR_DB_PATH` changes, unless internals
+  (`get_settings.cache_clear()`, `aar.db.session._engine = None`,
+  `st.cache_resource.clear()`) are reset by hand first. Documented here so
+  a future contributor doesn't "fix" a flaky repeat run by disabling
+  caching in production code — the fix belongs in the test harness, not
+  the app.
 
 ## 9. Open Work / Known Bugs / Blocked / Unverified / Technical Debt
 

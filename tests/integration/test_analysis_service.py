@@ -1,0 +1,31 @@
+from aar.models import AnalysisRunStatus, CommanderReport, SourceDocument, SourceDocumentType
+from aar.services.analysis_service import get_latest_analysis_run, trigger_analysis
+
+
+def test_trigger_analysis_uses_default_mock_provider(session, sample_incident, monkeypatch):
+    monkeypatch.delenv("AAR_LLM_PROVIDER", raising=False)
+    doc = SourceDocument(
+        incident_id=sample_incident.id,
+        doc_type=SourceDocumentType.COMMANDER_REPORT,
+        original_filename="p12.docx",
+        stored_path="/tmp/p12.docx",
+        content_hash="h1",
+    )
+    session.add(doc)
+    session.commit()
+    session.refresh(doc)
+    report = CommanderReport(
+        incident_id=sample_incident.id,
+        source_document_id=doc.id,
+        callsign="P12",
+        surname="Janssens",
+        raw_sections={"observations": "Rook zichtbaar bij aankomst."},
+    )
+    session.add(report)
+    session.commit()
+
+    run = trigger_analysis(session, sample_incident)
+    assert run.status == AnalysisRunStatus.SUCCESS
+
+    latest = get_latest_analysis_run(session, sample_incident)
+    assert latest.id == run.id

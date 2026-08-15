@@ -6,7 +6,7 @@ import streamlit as st
 from aar.config.logging_setup import configure_logging, get_logger
 from aar.db.session import get_engine, get_session, init_db
 from aar.services.incident_service import get_incident
-from aar.ui import archive_page, new_incident_page, placeholder_page, sources_page
+from aar.ui import aar_page, analysis_page, archive_page, final_aar_page, new_incident_page, sources_page
 
 configure_logging()
 logger = get_logger("app")
@@ -26,6 +26,13 @@ _bootstrap()
 if "route" not in st.session_state:
     st.session_state["route"] = "archive"
 
+_INCIDENT_ROUTES = {
+    "sources": sources_page,
+    "analysis": analysis_page,
+    "aar": aar_page,
+    "final_aar": final_aar_page,
+}
+
 session = get_session()
 try:
     route = st.session_state["route"]
@@ -33,19 +40,13 @@ try:
         archive_page.render(session)
     elif route == "new_incident":
         new_incident_page.render(session)
-    elif route == "sources":
+    elif route in _INCIDENT_ROUTES:
         incident = get_incident(session, st.session_state.get("incident_id"))
         if incident is None:
             st.session_state["route"] = "archive"
             st.rerun()
         else:
-            sources_page.render(session, incident)
-    elif route == "analysis":
-        placeholder_page.render("Analyse", "Fase 4-7 — AI-pijplijn")
-    elif route == "aar":
-        placeholder_page.render("Interactieve AAR", "Fase 8 — interactieve werksessie")
-    elif route == "final_aar":
-        placeholder_page.render("Definitieve AAR", "Fase 8 — definitieve AAR")
+            _INCIDENT_ROUTES[route].render(session, incident)
     else:
         st.session_state["route"] = "archive"
         st.rerun()
