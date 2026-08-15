@@ -38,15 +38,18 @@ def _extract_payload(user_prompt: str) -> dict:
     return json.loads(match.group(1))
 
 
+_PLACEHOLDER_RE = re.compile(r"^[\s\-–—.]*$")
+
+
 def _split_sentences(text: str) -> list[str]:
     sentences: list[str] = []
     for line in text.splitlines():
         line = line.strip()
-        if not line:
-            continue
+        if not line or _PLACEHOLDER_RE.match(line):
+            continue  # e.g. a commander leaving a section as "-" / "n.v.t." to mean "nothing to report"
         for part in re.split(r"(?<=[.!?])\s+", line):
             part = part.strip()
-            if part:
+            if part and not _PLACEHOLDER_RE.match(part):
                 sentences.append(part)
     return sentences
 

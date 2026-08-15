@@ -54,16 +54,32 @@
     <div class="rounded-lg border border-slate-200 bg-white divide-y divide-slate-100">
       {% for e in events %}
       <div class="p-4">
-        <div class="flex items-center gap-2 mb-1">
+        <div class="flex items-center gap-2 mb-2">
           <span class="text-[11px] font-mono font-semibold text-slate-400 tabular">
             {{ e.exact_time|nl_time if e.exact_time else ("ca. " ~ e.approx_time_text if e.approx_time_text else "geen tijdstip") }}
           </span>
           <span class="font-semibold text-ink-900 text-[13px]">{{ e.title }}</span>
         </div>
+        {% if e.perspectives %}
+        <div class="space-y-1.5">
+          {% for p in e.perspectives %}
+          <p class="text-[13px] leading-relaxed">
+            <span class="font-medium text-slate-700">{{ p.commander_display_name }}:</span>
+            <span class="text-slate-600">{{ p.perspective_text }}</span>
+          </p>
+          {% endfor %}
+        </div>
+        {% elif e.ai_summary %}
         <p class="text-[13px] text-slate-600 leading-relaxed">{{ e.ai_summary }}</p>
+        {% else %}
+        <p class="text-[13px] text-slate-400 italic">Geen inhoud.</p>
+        {% endif %}
       </div>
       {% endfor %}
     </div>
+    <p class="mt-2 text-[11.5px] text-slate-400">
+      Verschillende commandanten kunnen een verschillend perspectief geven op hetzelfde moment — dat wordt hier bewust apart getoond, niet samengevoegd tot één verhaal.
+    </p>
     {% endif %}
   </section>
 

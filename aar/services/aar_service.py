@@ -21,6 +21,27 @@ from aar.models import (
     PositiveFinding,
     SourceDocument,
 )
+from aar.models.enums import ObservationCategory
+from aar.schemas.constants import CATEGORY_LABELS_NL
+
+# Which incident moments are decision-relevant enough to belong in a *short*
+# situation summary. Deliberately excludes the more granular/procedural
+# categories (raw observations, available/missing information, assessment,
+# narrative action, general remarks) — those stay fully visible in the
+# per-commander cards and the Incidentverloop tab, just not repeated here.
+# This is a deterministic category filter, not real judgement about
+# importance — a real LLM is what's actually needed for genuine synthesis;
+# this only keeps the mock's draft from being a dump of every category.
+_CRUCIAL_SUMMARY_TITLES = {
+    CATEGORY_LABELS_NL[c]
+    for c in (
+        ObservationCategory.DECISION,
+        ObservationCategory.RESULT,
+        ObservationCategory.OBJECTIVE,
+        ObservationCategory.WENT_WELL,
+        ObservationCategory.WENT_LESS_WELL,
+    )
+}
 
 # -- reads -------------------------------------------------------------
 
@@ -203,9 +224,22 @@ def add_correction(
 
 
 def default_situation_summary(session: Session, incident: Incident) -> str:
+    """A structured starting draft for the facilitator to edit — grouped per
+    incident moment, with each commander's account kept as its own
+    attributed line rather than merged into one unattributed paragraph.
+    Different commanders can genuinely disagree or report different things
+    about the same moment; collapsing that into one blended narrative would
+    misrepresent it as a single agreed-upon account."""
     events = get_events(session, incident)
-    lines = [e.ai_summary for e in events if e.ai_summary]
-    return "\n".join(lines)
+    relevant = [e for e in events if e.is_human_added or e.title in _CRUCIAL_SUMMARY_TITLES]
+    blocks: list[str] = []
+    for event in relevant:
+        lines = [f"{p.commander_display_name}: {p.perspective_text}" for p in event.perspectives if p.perspective_text]
+        if lines:
+            blocks.append(event.title + "\n" + "\n".join(lines))
+        elif event.ai_summary:
+            blocks.append(event.title + "\n" + event.ai_summary)
+    return "\n\n".join(blocks)
 
 
 def update_situation_summary(session: Session, incident: Incident, text: str) -> Incident:

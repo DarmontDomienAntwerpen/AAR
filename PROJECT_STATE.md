@@ -657,6 +657,49 @@ change).
   requires a real LLM — verified via `scripts/run_synthetic_demo.py` +
   fresh Playwright screenshots (inspected directly), full suite green.
   111/112 tests passing (1 documented skip, unrelated).
+- **Phase 19 (post-handoff, user-requested):** "Definitieve AAR is a mess,
+  a run-on story, observations run together — one commander says 'I see
+  smoke', another already describes an attack underway, that can happen if
+  he arrived later but it's odd to read like that." Root cause: the
+  read-only Final AAR page rendered each event's flattened `ai_summary`
+  string as one `<p>` — even after Phase 18 attributed each segment inline,
+  multiple commanders' accounts of the same category-bucket ("Waarnemingen
+  bij aankomst") still read as one run-on paragraph, and — unlike the
+  interactive AAR — this page has no edit step to clean it up before a
+  facilitator reads it. Fixed properly rather than re-formatting the same
+  string: `final_aar.html`'s Incidentverloop section now renders
+  `event.perspectives` directly (already-structured per-commander data that
+  existed since Phase 8 and was already used correctly in the interactive
+  AAR's "Perspectieven" disclosure) as visually separate attributed lines,
+  falling back to `ai_summary` only for events with no perspectives (manually
+  facilitator-added ones). Added an explanatory caption ("different
+  commanders may have a different perspective on the same moment — shown
+  separately on purpose, not merged into one story"). Applied the same fix
+  to `aar_service.py::default_situation_summary` (used both as the Overzicht
+  tab's editable draft and, if left unedited, the Final AAR's "Situatie"
+  text) — rebuilt to group per incident moment with each commander's line
+  separately attributed, instead of joining raw `ai_summary` strings.
+  **Follow-up user request in the same exchange**: "a big overview with
+  those [commander] boxes like at the start is great — the LLM should then
+  try to sketch the situation from all the boxes together, roughly, only
+  the crucial things." Explicitly named as a real-LLM-only capability (mock
+  cannot judge "crucial" — no semantic importance-ranking is possible
+  without genuine language understanding), so implemented the deterministic
+  version of that idea instead of pretending to: `default_situation_summary`
+  now filters to only the decision-relevant categories
+  (`_CRUCIAL_SUMMARY_TITLES` = Beslissing/Doelstelling/Resultaat/Wat ging
+  goed/Wat ging minder goed — a fixed category allowlist, not importance
+  judgement) plus any facilitator-added event, instead of dumping all ~12
+  category buckets. Also fixed a small but real content-quality bug found
+  while reviewing the output: commander reports that leave an optional
+  section as "-" (this fixture's convention for "nothing to report") were
+  being extracted as a literal one-character "observation", cluttering
+  every downstream view with stray "P34: -" lines —
+  `aar/llm/mock.py::_split_sentences` now filters lines/sentences that are
+  just punctuation/dashes before they ever become an `Observation`.
+  111/112 tests passing (1 documented skip, unrelated); verified via fresh
+  screenshots of the Final AAR page specifically (both the "Situatie"
+  section and "Incidentverloop"), not just the test suite.
 
 ## 9. Open Work / Known Bugs / Blocked / Unverified / Technical Debt
 
