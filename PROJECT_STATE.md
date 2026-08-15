@@ -132,7 +132,7 @@ change).
 | 4 | LLM abstraction (base/mock/anthropic) | DONE |
 | 5 | Report AI extraction | DONE |
 | 6 | Incident reconstruction | DONE |
-| 7 | Analysis engine (findings/lessons) | TODO |
+| 7 | Analysis engine (findings/lessons) | DONE |
 | 8 | Interactive AAR (Streamlit workflow) | TODO |
 | 9 | Re-analysis after correction | TODO |
 | 10 | Archive/search | TODO |
@@ -271,6 +271,39 @@ change).
   reconstruction alone never sets `exact_time`, and that timeline enrichment
   leaves times unset on no-overlap, ambiguous-tie, and invalid-record cases.
   59/59 tests passing.
+- Phase 7: `aar/analysis/findings.py::run_findings` (Stage 5) — analyses
+  source-type observations + reconstructed events, produces
+  `DiscussionPoint`s (a detected conflict becomes `origin_category=conflict`
+  describing both sides neutrally, never picking one — spec §29), candidate
+  `PositiveFinding`s, and new `AI_OBSERVATION`-typed `Observation` rows for
+  patterns no single source names explicitly (spec §30). Idempotent re-run
+  (clears prior AI-generated rows of all three kinds, keeps
+  `is_human_added=True` ones). `aar/analysis/lessons.py::run_lessons`
+  (Stage 6) turns current discussion points + positive findings into
+  `Lesson`/`Improvement` proposals, linking each improvement back to its
+  lesson by id (looked up via a title→id map built at insert time — not
+  stored as raw titles). No owner/deadline/status fields exist on either
+  model, structurally enforcing the no-action-tracking rule (spec §44).
+  `aar/analysis/pipeline.py::run_analysis` orchestrates all six stages
+  behind one `AnalysisRun` bookkeeping row (`stage_reached` updated per
+  stage; on any exception the run is marked `ERROR` with the message and
+  stage recorded rather than raising — the caller/UI reads the run's status
+  instead of needing try/except); skips Stage 1 for reports already
+  successfully extracted (cheap re-analysis). Sets `Incident.status =
+  ANALYZED` on success. **Bug found and fixed during testing:** `Lesson`
+  ORM model's evidence column is `discussion_point_ids` (int ids, matching
+  every other evidence-link column in the schema) but `lessons.py` was
+  writing `discussion_point_titles` (a leftover from the LLM schema's
+  title-based cross-referencing) — caught immediately by the first
+  lessons-stage test run (`TypeError: invalid keyword argument`), fixed by
+  resolving titles to ids via a lookup built from the incident's current
+  discussion points before insert. Also fixed a `datetime.utcnow()`
+  deprecation warning surfaced by the same test run. 12 new tests (findings
+  incl. idempotency and multi-source AI-observation creation; lessons incl.
+  lesson→improvement id linking and idempotency; full pipeline end-to-end
+  incl. a no-reports failure path and a rerun-doesn't-duplicate check, plus
+  an explicit assertion that no event ends up with a fabricated exact time
+  when no dispatch data was supplied). 67/67 tests passing.
 
 ## 9. Open Work / Known Bugs / Blocked / Unverified / Technical Debt
 
