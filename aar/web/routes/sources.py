@@ -9,7 +9,7 @@ from aar.models import CommanderReport, ParseStatus, SourceDocument, SourceDocum
 from aar.services import media_service
 from aar.services.dispatch_service import ingest_dispatch_excel
 from aar.services.errors import DuplicateSourceError
-from aar.services.report_service import ingest_commander_report
+from aar.services.report_service import ingest_commander_report, ingest_commander_report_sheet
 from aar.web.deps import get_db, incident_or_404
 from aar.web.flash import redirect_with_flash
 from aar.web.templating import templates
@@ -78,6 +78,27 @@ async def upload_reports(
 
     flash = "; ".join(messages) if messages else "Verslagen toegevoegd."
     flash_type = "warning" if messages else "success"
+    return redirect_with_flash(f"/incidents/{incident_id}/sources", flash, flash_type)
+
+
+@router.post("/incidents/{incident_id}/sources/reports-sheet")
+async def upload_reports_sheet(
+    incident_id: int, file: UploadFile = File(...), session: Session = Depends(get_db)
+):
+    """Alternative to individual .docx uploads: a Google-Forms responses
+    sheet (downloaded as .xlsx) carrying one row per commander."""
+    incident = incident_or_404(session, incident_id)
+    content = await file.read()
+    try:
+        docs = ingest_commander_report_sheet(session, incident, content, file.filename)
+        errored = [d for d in docs if d.parse_status != ParseStatus.PARSED]
+        if errored:
+            flash, flash_type = f"{file.filename}: {errored[0].parse_error}", "warning"
+        else:
+            flash, flash_type = f"{len(docs)} verslag(en) toegevoegd uit {file.filename}.", "success"
+    except DuplicateSourceError as exc:
+        flash, flash_type = str(exc), "warning"
+
     return redirect_with_flash(f"/incidents/{incident_id}/sources", flash, flash_type)
 
 

@@ -6,21 +6,49 @@
 
 {{ c.page_header("Bronnen", "Upload de commandantenverslagen (.docx), het dispatchbestand (.xlsx), en eventuele foto's of plannen.") }}
 
+<div class="mb-6 rounded-[13px] border border-slate-200 border-l-[3px] border-l-accent-600 bg-white shadow-card p-5">
+  <div class="flex items-start gap-3">
+    <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent-100 text-accent-700">
+      {{ icons.icon('phone', 'w-4 h-4') }}
+    </span>
+    <div class="flex-1 min-w-0">
+      <h2 class="font-semibold text-slate-900 mb-1">Initiële oproep</h2>
+      <p class="text-xs text-slate-500 mb-3">Wat kregen we mee bij de eerste melding? Ook aanpasbaar in het Overzicht-blad van de AAR; wordt daar vooraan bij de situatieschets getoond.</p>
+      <form method="post" action="/incidents/{{ incident.id }}/aar/initial-call-notes">
+        <textarea name="text" rows="2" placeholder="bv. Melding van rookontwikkeling in woning, mogelijk bewoner aanwezig..."
+                  class="w-full rounded-md border border-slate-300 px-3 py-2.5 text-sm leading-relaxed focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500">{{ incident.initial_call_notes }}</textarea>
+        <button type="submit" class="mt-3 rounded-md border border-slate-300 px-3.5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition">
+          Oproepgegevens opslaan
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
 <div class="grid grid-cols-2 gap-6">
-  <div class="rounded-lg border border-slate-200 bg-white p-6">
+  <div class="rounded-[13px] border border-slate-200 bg-white shadow-card p-6">
     <div class="flex items-center justify-between mb-4">
-      <h2 class="font-semibold text-slate-900">Commandantenverslagen</h2>
+      <h2 class="font-semibold text-slate-900">Invoerbron</h2>
       <a href="/commander-report-template.docx" class="text-xs font-medium text-accent-700 hover:text-accent-800">
         Leeg sjabloon downloaden
       </a>
     </div>
 
-    <form method="post" action="/incidents/{{ incident.id }}/sources/reports" enctype="multipart/form-data" class="mb-5">
+    <form method="post" action="/incidents/{{ incident.id }}/sources/reports" enctype="multipart/form-data" class="mb-3">
       <label class="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300
                      bg-slate-50/50 px-4 py-8 text-center cursor-pointer hover:border-accent-400 hover:bg-accent-50/30 transition">
         {{ icons.icon('upload', 'w-6 h-6 text-slate-400') }}
         <span class="text-sm font-medium text-slate-600">Kies een of meerdere .docx-bestanden</span>
         <input type="file" name="files" accept=".docx" multiple class="hidden" onchange="this.closest('form').requestSubmit()">
+      </label>
+    </form>
+
+    <form method="post" action="/incidents/{{ incident.id }}/sources/reports-sheet" enctype="multipart/form-data" class="mb-5">
+      <label class="flex items-center justify-center gap-2 rounded-lg border border-dashed border-slate-300
+                     bg-white px-4 py-2.5 text-center cursor-pointer hover:border-accent-400 hover:bg-accent-50/20 transition">
+        {{ icons.icon('upload', 'w-3.5 h-3.5 text-slate-400') }}
+        <span class="text-xs font-medium text-slate-500">Of: antwoordenblad van een Google Formulier (.xlsx) — alle bevelvoerders tegelijk</span>
+        <input type="file" name="file" accept=".xlsx" class="hidden" onchange="this.closest('form').requestSubmit()">
       </label>
     </form>
 
@@ -30,13 +58,17 @@
 
     <div class="space-y-2">
       {% for report in reports %}
-      <div class="rounded-lg border border-slate-200 px-4 py-3">
-        <div class="font-medium text-sm text-slate-900">{{ report.display_name }}</div>
-        <div class="text-xs text-slate-500 mt-0.5">{{ report_docs[report.source_document_id].original_filename }}</div>
+      <a href="/incidents/{{ incident.id }}/media/{{ report.source_document_id }}" target="_blank"
+         class="block rounded-lg border border-slate-200 px-4 py-3 hover:border-accent-300 hover:bg-accent-50/20 transition group">
+        <div class="flex items-center justify-between gap-2">
+          <div class="font-medium text-sm text-slate-900">{{ report.display_name }}</div>
+          {{ icons.icon('document', 'w-4 h-4 text-slate-300 group-hover:text-accent-500 transition shrink-0') }}
+        </div>
+        <div class="text-xs text-slate-500 mt-0.5">{{ report_docs[report.source_document_id].original_filename }} &middot; klik om origineel document te bekijken</div>
         {% if report_docs[report.source_document_id].parse_error %}
         <div class="text-xs text-amber-600 mt-1">{{ report_docs[report.source_document_id].parse_error }}</div>
         {% endif %}
-      </div>
+      </a>
       {% endfor %}
       {% for doc in failed_report_docs %}
       <div class="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3">
@@ -47,7 +79,7 @@
     </div>
   </div>
 
-  <div class="rounded-lg border border-slate-200 bg-white p-6">
+  <div class="rounded-[13px] border border-slate-200 bg-white shadow-card p-6">
     <h2 class="font-semibold text-slate-900 mb-4">Dispatchgegevens</h2>
 
     <form method="post" action="/incidents/{{ incident.id }}/sources/dispatch" enctype="multipart/form-data" class="mb-5">
@@ -65,20 +97,27 @@
 
     <div class="space-y-2">
       {% for info in dispatch_info %}
-      <div class="rounded-lg border border-slate-200 px-4 py-3">
-        <div class="font-medium text-sm text-slate-900">{{ info.doc.original_filename }}</div>
-        <div class="text-xs text-slate-500 mt-0.5">{{ info.n_records }} rijen herkend, waarvan {{ info.n_invalid }} met een waarschuwing.</div>
+      <a href="/incidents/{{ incident.id }}/media/{{ info.doc.id }}" target="_blank"
+         class="block rounded-lg border border-slate-200 px-4 py-3 hover:border-accent-300 hover:bg-accent-50/20 transition group">
+        <div class="flex items-center justify-between gap-2">
+          <div class="font-medium text-sm text-slate-900">{{ info.doc.original_filename }}</div>
+          {{ icons.icon('document', 'w-4 h-4 text-slate-300 group-hover:text-accent-500 transition shrink-0') }}
+        </div>
+        <div class="text-xs text-slate-500 mt-0.5">{{ info.n_records }} rijen herkend, waarvan {{ info.n_invalid }} met een waarschuwing &middot; klik om origineel bestand te bekijken</div>
         {% if info.doc.parse_error %}
         <div class="text-xs text-amber-600 mt-1">{{ info.doc.parse_error }}</div>
         {% endif %}
-      </div>
+      </a>
       {% endfor %}
     </div>
   </div>
 </div>
 
-<div class="mt-6 rounded-lg border border-slate-200 bg-white p-6">
-  <h2 class="font-semibold text-slate-900 mb-4">Foto's &amp; plannen</h2>
+<div class="mt-6 rounded-[13px] border-2 border-accent-200 bg-white shadow-card p-6">
+  <div class="flex items-center gap-2.5 mb-1">
+    {{ icons.icon('document', 'w-5 h-5 text-accent-500') }}
+    <h2 class="font-semibold text-slate-900 text-lg">Foto's &amp; plannen{% if photos %} ({{ photos|length }}){% endif %}</h2>
+  </div>
   <p class="text-xs text-slate-500 mb-4">Situatieschetsen, plattegronden of foto's — referentiemateriaal, wordt niet door de AI geanalyseerd. Kan later gekoppeld worden aan een specifiek incidentmoment.</p>
 
   <form method="post" action="/incidents/{{ incident.id }}/sources/photos" enctype="multipart/form-data" class="mb-5">
@@ -93,18 +132,19 @@
   {% if not photos %}
     {{ c.empty_state("Nog geen foto's of plannen geüpload.") }}
   {% else %}
-  <div class="grid grid-cols-4 gap-4">
+  <div class="grid grid-cols-3 gap-4">
     {% for photo in photos %}
-    <div class="rounded-xl border border-slate-200 overflow-hidden">
+    <div class="rounded-xl border border-slate-200 overflow-hidden shadow-sm">
       {% if photo.original_filename.lower().endswith(('.jpg', '.jpeg', '.png', '.webp')) %}
-      <a href="/incidents/{{ incident.id }}/media/{{ photo.id }}" target="_blank">
+      <a href="/incidents/{{ incident.id }}/media/{{ photo.id }}" target="_blank" class="cursor-zoom-in block"
+         onclick="openLightbox('/incidents/{{ incident.id }}/media/{{ photo.id }}'); return false;">
         <img src="/incidents/{{ incident.id }}/media/{{ photo.id }}" alt="{{ photo.caption or photo.original_filename }}"
-             class="w-full h-28 object-cover bg-slate-100">
+             class="w-full h-44 object-cover bg-slate-100 hover:opacity-90 transition">
       </a>
       {% else %}
       <a href="/incidents/{{ incident.id }}/media/{{ photo.id }}" target="_blank"
-         class="flex h-28 w-full items-center justify-center bg-slate-50 text-slate-400">
-        {{ icons.icon('document', 'w-8 h-8') }}
+         class="flex h-44 w-full items-center justify-center bg-slate-50 text-slate-400">
+        {{ icons.icon('document', 'w-10 h-10') }}
       </a>
       {% endif %}
       <div class="p-3">
@@ -127,7 +167,7 @@
   {% endif %}
 </div>
 
-<div class="mt-8 flex items-center justify-between rounded-lg border border-slate-200 bg-white px-6 py-5">
+<div class="mt-8 flex items-center justify-between rounded-[13px] border border-slate-200 bg-white shadow-card px-6 py-5">
   {% if not reports %}
   <p class="text-sm text-slate-500">Voeg minstens één commandantenverslag toe om de analyse te starten.</p>
   {% else %}
