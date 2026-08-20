@@ -5,9 +5,9 @@
   {{ c.empty_state("Nog geen positieve punten.") }}
 {% endif %}
 
-<div class="space-y-3.5">
+<div class="grid grid-cols-2 gap-3.5 items-start">
   {% for pf in positive_findings %}
-  <div class="rounded-lg border border-slate-200 border-l-4 border-l-emerald-400 bg-white p-5">
+  <div class="rounded-[13px] border border-slate-200 border-l-4 border-l-emerald-400 bg-white p-5 shadow-card">
     <div class="flex items-start justify-between gap-4 mb-2">
       <div class="flex flex-wrap items-center gap-1.5">
         {{ c.badge("Positief punt", "emerald") }}
@@ -27,9 +27,9 @@
     </div>
 
     <form method="post" action="/incidents/{{ incident.id }}/aar/positive-findings/{{ pf.id }}/update" class="space-y-2">
-      <input type="text" name="title" value="{{ pf.title }}"
-             class="w-full rounded-md border border-slate-200 bg-slate-50/50 px-3 py-2 text-[13.5px] font-semibold text-ink-900 focus:border-accent-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-accent-500">
-      <textarea name="description" rows="2"
+      <input type="text" name="title" value="{{ pf.title }}" title="{{ pf.title }}"
+             class="w-full rounded-md border border-slate-200 bg-slate-50/50 px-3 py-2 text-[13.5px] font-semibold text-ink-900 overflow-hidden text-ellipsis focus:border-accent-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-accent-500">
+      <textarea name="description" rows="5"
                 class="w-full rounded-md border border-slate-200 bg-slate-50/50 px-3 py-2 text-[13px] leading-relaxed text-slate-600 focus:border-accent-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-accent-500">{{ pf.description }}</textarea>
       <button type="submit" class="rounded-md border border-slate-300 px-3 py-1.5 text-[12px] font-semibold text-slate-700 hover:bg-slate-50 transition">
         Opslaan

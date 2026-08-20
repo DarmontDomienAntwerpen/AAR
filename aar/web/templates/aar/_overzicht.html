@@ -1,143 +1,169 @@
 {% import "_icons.html" as icons %}
 
-<div class="rounded-lg border border-slate-200 bg-white p-5 mb-5">
-  <h2 class="text-[13px] font-semibold text-ink-900 mb-3.5">Incidentgegevens</h2>
+<div class="rounded-[13px] border border-slate-200 bg-white p-5 mb-5 shadow-card">
+  <div class="flex items-center justify-between mb-3.5">
+    <h2 class="text-[13px] font-semibold text-ink-900">Incidentgegevens</h2>
+  </div>
   <dl class="grid grid-cols-4 gap-3.5 text-[13px]">
     <div><dt class="text-[11px] uppercase tracking-wide text-slate-400">Datum</dt><dd class="mt-0.5 font-medium text-slate-800 tabular">{{ incident.date|nl_date }}</dd></div>
     <div><dt class="text-[11px] uppercase tracking-wide text-slate-400">Type</dt><dd class="mt-0.5 font-medium text-slate-800">{{ incident.incident_type.value }}</dd></div>
-    <div class="col-span-2"><dt class="text-[11px] uppercase tracking-wide text-slate-400">Locatie</dt><dd class="mt-0.5 font-medium text-slate-800">{{ incident.location }}</dd></div>
+    <div class="col-span-2">
+      <dt class="text-[11px] uppercase tracking-wide text-slate-400">Locatie</dt>
+      <dd class="mt-0.5">
+        <a href="{{ maps_url(incident.location) }}" target="_blank" rel="noopener"
+           class="inline-flex items-center gap-1.5 font-medium text-accent-700 hover:text-accent-800 hover:underline">
+          {{ incident.location }}
+          {{ icons.icon('map-pin', 'w-3.5 h-3.5 text-accent-400') }}
+        </a>
+      </dd>
+    </div>
     {% if incident.description %}
     <div class="col-span-4"><dt class="text-[11px] uppercase tracking-wide text-slate-400">Omschrijving</dt><dd class="mt-0.5 text-slate-600">{{ incident.description }}</dd></div>
     {% endif %}
   </dl>
-</div>
 
-<div class="mb-5">
-  <h2 class="text-[13px] font-semibold text-ink-900 mb-3">Betrokken commandanten</h2>
-  {% if not commander_reports %}
-  <div class="rounded-lg border border-dashed border-slate-300 bg-slate-50/60 px-6 py-8 text-center text-[13px] text-slate-500">
-    Geen verslagen gekoppeld.
-  </div>
-  {% else %}
-  <div class="grid grid-cols-2 gap-4">
-    {% for report in commander_reports %}
-    {% set sections = report.raw_sections or {} %}
-    <div class="rounded-lg border border-slate-200 border-l-4 {{ objective_border_class(report.objective_achieved) }} bg-white overflow-hidden">
-      <div class="flex items-center gap-3 px-4 py-3 bg-slate-50/70 border-b border-slate-100">
-        <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-ink-900 text-white text-[12px] font-mono font-bold">
-          {{ report.callsign[:3] if report.callsign else "?" }}
-        </span>
-        <div class="min-w-0 flex-1">
-          <div class="text-[13.5px] font-semibold text-ink-900 truncate">{{ report.rank }} {{ report.surname }}</div>
-          <div class="text-[11.5px] text-slate-500 truncate">{{ report.callsign }} &middot; {{ report.unit_name }}</div>
-        </div>
-        <span class="shrink-0 rounded px-1.5 py-[3px] text-[10.5px] font-semibold leading-none {{ objective_badge_class(report.objective_achieved) }}">
-          Doel: {{ report.objective_achieved.value if report.objective_achieved else "onbekend" }}
-        </span>
+  <details class="mt-3.5 pt-3 border-t border-slate-100">
+    <summary class="cursor-pointer text-[11.5px] font-medium text-slate-400 hover:text-slate-600 select-none">
+      {{ icons.icon('pencil', 'w-3 h-3 inline -mt-0.5') }} Incidentgegevens bewerken
+    </summary>
+    <form method="post" action="/incidents/{{ incident.id }}/aar/incident-details" class="mt-2.5 grid grid-cols-4 gap-2.5">
+      <div>
+        <label class="block text-[10.5px] font-medium text-slate-400 mb-0.5">Datum</label>
+        <input type="date" name="date" value="{{ incident.date.isoformat() }}"
+               class="w-full rounded-md border border-slate-300 px-2.5 py-1.5 text-[12.5px] focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500">
       </div>
-
-      {% set decision_gist = (sections.get('decision', '').split('.') | first) %}
-      {% set result_gist = (sections.get('result', '').split('.') | first) %}
-      {% if decision_gist is placeholder_text %}{% set decision_gist = "" %}{% endif %}
-      {% if result_gist is placeholder_text %}{% set result_gist = "" %}{% endif %}
-      {% if decision_gist or result_gist %}
-      <div class="px-4 py-2.5 bg-accent-50/60 text-[12px] text-accent-900 leading-relaxed border-b border-slate-100">
-        {% if decision_gist %}<span class="font-semibold">Besliste:</span> {{ decision_gist }}.{% endif %}
-        {% if result_gist %} <span class="font-semibold">Resultaat:</span> {{ result_gist }}.{% endif %}
-      </div>
-      {% endif %}
-
-      <div class="p-4 space-y-3">
-        {% for key, field_label in commander_section_fields %}
-        {% set value = sections.get(key, "") %}
-        {% if value and value is not placeholder_text %}
-        <div>
-          <div class="text-[10.5px] font-semibold uppercase tracking-wide text-slate-400 mb-0.5">{{ field_label }}</div>
-          <p class="text-[12.5px] text-slate-600 leading-relaxed">{{ value }}</p>
-        </div>
-        {% endif %}
-        {% endfor %}
-      </div>
-
-      <details class="border-t border-slate-100 px-4 py-2.5">
-        <summary class="cursor-pointer text-[11.5px] font-medium text-slate-400 hover:text-slate-600 select-none">Volledig verslag lezen</summary>
-        <div class="mt-3 space-y-3">
-          {% for key, field_label in commander_section_fields + [("narrative", "Verloop / verhaal"), ("why", "Waarom"), ("doubts_assumptions", "Twijfels / veronderstellingen"), ("information_position", "Informatiepositie"), ("objective", "Doelstelling"), ("other", "Overig")] %}
-          {% set value = sections.get(key, "") %}
-          {% if value and value is not placeholder_text %}
-          <div>
-            <div class="text-[10.5px] font-semibold uppercase tracking-wide text-slate-400 mb-0.5">{{ field_label }}</div>
-            <p class="text-[12.5px] text-slate-600 leading-relaxed whitespace-pre-line">{{ value }}</p>
-          </div>
-          {% endif %}
+      <div>
+        <label class="block text-[10.5px] font-medium text-slate-400 mb-0.5">Type</label>
+        <select name="incident_type"
+                class="w-full rounded-md border border-slate-300 px-2.5 py-1.5 text-[12.5px] focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500">
+          {% for t in IncidentType %}
+          <option value="{{ t.value }}" {{ "selected" if incident.incident_type == t else "" }}>{{ t.value }}</option>
           {% endfor %}
-          {% if report.objective_achieved_explanation %}
-          <div>
-            <div class="text-[10.5px] font-semibold uppercase tracking-wide text-slate-400 mb-0.5">Toelichting doelbereik</div>
-            <p class="text-[12.5px] text-slate-600 leading-relaxed">{{ report.objective_achieved_explanation }}</p>
-          </div>
-          {% endif %}
-        </div>
-      </details>
-    </div>
-    {% endfor %}
-  </div>
-  {% endif %}
+        </select>
+      </div>
+      <div class="col-span-2">
+        <label class="block text-[10.5px] font-medium text-slate-400 mb-0.5">Locatie</label>
+        <input type="text" name="location" value="{{ incident.location }}"
+               class="w-full rounded-md border border-slate-300 px-2.5 py-1.5 text-[12.5px] focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500">
+      </div>
+      <div class="col-span-4">
+        <label class="block text-[10.5px] font-medium text-slate-400 mb-0.5">Omschrijving</label>
+        <textarea name="description" rows="2"
+                  class="w-full rounded-md border border-slate-300 px-2.5 py-1.5 text-[12.5px] leading-relaxed focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500">{{ incident.description }}</textarea>
+      </div>
+      <div class="col-span-4">
+        <button type="submit" class="rounded-md border border-slate-300 px-3 py-1.5 text-[12px] font-semibold text-slate-700 hover:bg-slate-50 transition">
+          Gegevens opslaan
+        </button>
+      </div>
+    </form>
+  </details>
 </div>
 
 <div class="grid grid-cols-3 gap-5">
   <div class="col-span-2 space-y-5">
-    <div class="rounded-lg border border-slate-200 bg-white p-5">
-      <h2 class="text-[13px] font-semibold text-ink-900 mb-3.5">Situatiesamenvatting</h2>
-      <form method="post" action="/incidents/{{ incident.id }}/aar/situation-summary">
-        <textarea name="text" rows="6"
-                  class="w-full rounded-md border border-slate-300 px-3 py-2.5 text-[13px] leading-relaxed focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500">{{ default_summary }}</textarea>
-        <button type="submit" class="mt-3 rounded-md bg-ink-900 px-3.5 py-2 text-[13px] font-semibold text-white hover:bg-ink-800 transition">
-          Samenvatting opslaan
-        </button>
-      </form>
+    <div class="rounded-[13px] border border-slate-200 border-l-[3px] border-l-accent-600 bg-white p-5 shadow-card">
+      <div class="flex items-start gap-3">
+        <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent-100 text-accent-700">
+          {{ icons.icon('phone', 'w-4 h-4') }}
+        </span>
+        <div class="flex-1 min-w-0">
+          <h2 class="text-[13px] font-semibold text-ink-900 mb-1">Initiële oproep</h2>
+          <p class="text-[11.5px] text-slate-500 mb-3">Wat kregen we mee bij de eerste melding? Wordt vooraan bij de situatieschets getoond.</p>
+          <form method="post" action="/incidents/{{ incident.id }}/aar/initial-call-notes">
+            <textarea name="text" rows="3" placeholder="bv. Melding van rookontwikkeling in woning, mogelijk bewoner aanwezig..."
+                      class="w-full rounded-md border border-slate-300 px-3 py-2.5 text-[13px] leading-relaxed focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500">{{ incident.initial_call_notes }}</textarea>
+            <button type="submit" class="mt-3 rounded-md border border-slate-300 px-3.5 py-2 text-[13px] font-semibold text-slate-700 hover:bg-slate-50 transition">
+              Oproepgegevens opslaan
+            </button>
+          </form>
+        </div>
+      </div>
     </div>
 
-    {% if photos %}
-    <div class="rounded-lg border border-slate-200 bg-white p-5">
-      <h2 class="text-[13px] font-semibold text-ink-900 mb-3.5">Beeldmateriaal</h2>
-      <div class="grid grid-cols-4 gap-3">
+    <div class="rounded-[13px] border border-slate-200 bg-white p-5 shadow-card">
+      <div class="flex items-center justify-between mb-3.5">
+        <h2 class="text-[13px] font-semibold text-ink-900">Situatie</h2>
+        <span class="text-[10.5px] font-medium uppercase tracking-wide text-slate-400">Samengevat door AI &middot; volledig te lezen</span>
+      </div>
+
+      <div class="rounded-md bg-slate-50/70 border border-slate-100 px-4 py-3.5 text-[13.5px] leading-relaxed text-slate-700 whitespace-pre-line">
+        {% if incident.initial_call_notes %}
+        <p class="mb-2"><span class="font-semibold text-ink-900">De initiële oproep en info was:</span> {{ incident.initial_call_notes }}</p>
+        {% endif %}
+        {% if default_summary %}
+        {{ default_summary }}
+        {% else %}
+        <span class="text-slate-400 italic">Nog geen situatiesamenvatting beschikbaar.</span>
+        {% endif %}
+      </div>
+
+      <details class="mt-3">
+        <summary class="cursor-pointer text-[11.5px] font-medium text-slate-400 hover:text-slate-600 select-none">
+          {{ icons.icon('pencil', 'w-3 h-3 inline -mt-0.5') }} Samenvatting bewerken
+        </summary>
+        <form method="post" action="/incidents/{{ incident.id }}/aar/situation-summary" class="mt-2.5">
+          <textarea name="text" rows="6"
+                    class="w-full rounded-md border border-slate-300 px-3 py-2.5 text-[13px] leading-relaxed focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500">{{ default_summary }}</textarea>
+          <button type="submit" class="mt-3 rounded-md bg-ink-900 px-3.5 py-2 text-[13px] font-semibold text-white hover:bg-ink-800 transition">
+            Samenvatting opslaan
+          </button>
+        </form>
+      </details>
+    </div>
+  </div>
+
+  <div class="space-y-5">
+    <div class="rounded-[13px] border border-slate-200 bg-white p-5 shadow-card">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-[13px] font-semibold text-ink-900">Beeldmateriaal</h2>
+        <a href="/incidents/{{ incident.id }}/sources" title="Foto of plan toevoegen"
+           class="flex h-6 w-6 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition">
+          {{ icons.icon('plus', 'w-3.5 h-3.5') }}
+        </a>
+      </div>
+      {% if not photos %}
+      <div class="rounded-md border border-dashed border-slate-300 bg-slate-50/60 px-4 py-4 text-center text-[11.5px] text-slate-500">
+        Nog niets toegevoegd.
+      </div>
+      {% else %}
+      <div class="flex flex-wrap gap-2">
         {% for photo in photos %}
-        <a href="/incidents/{{ incident.id }}/media/{{ photo.id }}" target="_blank" class="block rounded-md overflow-hidden border border-slate-200 group">
-          {% if photo.original_filename.lower().endswith(('.jpg', '.jpeg', '.png', '.webp')) %}
+        {% set is_image = photo.original_filename.lower().endswith(('.jpg', '.jpeg', '.png', '.webp')) %}
+        <a href="/incidents/{{ incident.id }}/media/{{ photo.id }}" target="_blank" title="{{ photo.caption or photo.original_filename }}"
+           class="block h-14 w-14 shrink-0 rounded-md overflow-hidden border border-slate-200 group {{ 'cursor-zoom-in' if is_image }}"
+           {% if is_image %}onclick="openLightbox('/incidents/{{ incident.id }}/media/{{ photo.id }}'); return false;"{% endif %}>
+          {% if is_image %}
           <img src="/incidents/{{ incident.id }}/media/{{ photo.id }}" alt="{{ photo.caption or photo.original_filename }}"
-               class="w-full h-24 object-cover bg-slate-100 group-hover:opacity-90 transition">
+               class="h-full w-full object-cover bg-slate-100 group-hover:opacity-90 transition">
           {% else %}
-          <div class="flex h-24 w-full items-center justify-center bg-slate-50 text-slate-400">
-            {{ icons.icon('document', 'w-7 h-7') }}
+          <div class="flex h-full w-full items-center justify-center bg-slate-50 text-slate-400">
+            {{ icons.icon('document', 'w-5 h-5') }}
           </div>
-          {% endif %}
-          {% if photo.caption %}
-          <div class="px-2 py-1.5 text-[11px] text-slate-500 truncate">{{ photo.caption }}</div>
           {% endif %}
         </a>
         {% endfor %}
       </div>
+      {% endif %}
     </div>
-    {% endif %}
-  </div>
 
-  <div class="space-y-5">
     {% if timed_events %}
-    <div class="rounded-lg border border-slate-200 bg-white p-5">
+    <div class="rounded-[13px] border border-slate-200 bg-white p-5 shadow-card">
       <h2 class="text-[13px] font-semibold text-ink-900 mb-3.5">Belangrijke tijdstippen</h2>
-      <ul class="space-y-2.5">
+      <ul>
         {% for e in timed_events %}
-        <li class="flex items-start gap-2.5">
-          <span class="mt-0.5 shrink-0 rounded bg-ink-100 px-1.5 py-[3px] text-[11px] font-mono font-semibold text-ink-700 tabular">{{ e.exact_time|nl_time }}</span>
-          <span class="text-[12.5px] text-slate-700">{{ e.title }}</span>
+        <li class="relative pl-4 {{ 'pb-3.5' if not loop.last else '' }}">
+          {% if not loop.last %}<span class="absolute left-[3.5px] top-3 bottom-0 w-px bg-slate-200"></span>{% endif %}
+          <span class="absolute left-0 top-[5px] h-[7px] w-[7px] rounded-full bg-accent-600"></span>
+          <span class="block text-[11px] font-mono font-semibold text-slate-400 tabular">{{ e.exact_time|nl_time }}</span>
+          <span class="block text-[12.5px] text-slate-700 leading-snug">{{ e.title }}</span>
         </li>
         {% endfor %}
       </ul>
     </div>
     {% endif %}
 
-    <div class="rounded-lg border border-slate-200 bg-white p-5">
+    <div class="rounded-[13px] border border-slate-200 bg-white p-5 shadow-card">
       <h2 class="text-[13px] font-semibold text-ink-900 mb-1.5">Heranalyse</h2>
       <p class="text-[11.5px] text-slate-500 mb-3.5">Voer dit uit nadat u correcties heeft toegevoegd, zodat de AI-analyse hiermee rekening houdt.</p>
       <form method="post" action="/incidents/{{ incident.id }}/aar/reanalyze">

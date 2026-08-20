@@ -7,7 +7,10 @@
 <div class="flex items-center justify-between mb-7">
   <div>
     <h1 class="text-[22px] font-bold text-ink-900 tracking-[-0.01em]">Definitieve AAR</h1>
-    <p class="mt-1 text-[13px] text-slate-500">{{ incident.location }} &middot; {{ incident.date|nl_date }} &middot; {{ incident.incident_type.value }}</p>
+    <p class="mt-1 text-[13px] text-slate-500">
+      <a href="{{ maps_url(incident.location) }}" target="_blank" rel="noopener" class="text-accent-700 hover:text-accent-800 hover:underline">{{ incident.location }}</a>
+      &middot; {{ incident.date|nl_date }} &middot; {{ incident.incident_type.value }}
+    </p>
   </div>
   {% if incident.status.value == "finalized" %}
   <span class="inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-[12.5px] font-semibold bg-emerald-50 text-emerald-700">
@@ -24,21 +27,58 @@
 
 <div class="space-y-7 max-w-3xl">
   <section>
-    <h2 class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2.5">Situatie</h2>
-    <div class="rounded-lg border border-slate-200 bg-white p-5 text-[13px] leading-relaxed text-slate-700 whitespace-pre-line">
-      {{ situation_summary or "—" }}
+    <h2 class="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2.5">
+      {{ icons.icon('map-pin', 'w-3 h-3 text-accent-500') }} Situatie
+    </h2>
+    <div class="rounded-[13px] border border-slate-200 border-l-[3px] border-l-accent-600 bg-white shadow-card p-5">
+      <div class="text-[13px] leading-relaxed text-slate-700 whitespace-pre-line">
+        {% if incident.initial_call_notes %}
+        <p class="mb-2.5"><span class="font-semibold text-ink-900">De initiële oproep en info was:</span> {{ incident.initial_call_notes }}</p>
+        {% endif %}
+        {% if situation_summary %}
+        {{ situation_summary }}
+        {% else %}
+        <span class="text-slate-400">Nog geen situatiesamenvatting opgeslagen. Ga naar
+          <a href="/incidents/{{ incident.id }}/aar?tab=overzicht" class="text-accent-600 underline hover:text-accent-700">Interactieve AAR &rarr; Overzicht</a>
+          om het AI-voorstel te bekijken en op te slaan.</span>
+        {% endif %}
+      </div>
+      {% if photos %}
+      <div class="mt-4 pt-4 border-t border-slate-100 grid grid-cols-3 gap-3">
+        {% for photo in photos %}
+        {% set is_image = photo.original_filename.lower().endswith(('.jpg', '.jpeg', '.png', '.webp')) %}
+        <a href="/incidents/{{ incident.id }}/media/{{ photo.id }}" target="_blank"
+           class="block rounded-md overflow-hidden border border-slate-200 group {{ 'cursor-zoom-in' if is_image }}"
+           {% if is_image %}onclick="openLightbox('/incidents/{{ incident.id }}/media/{{ photo.id }}'); return false;"{% endif %}>
+          {% if is_image %}
+          <img src="/incidents/{{ incident.id }}/media/{{ photo.id }}" alt="{{ photo.caption or photo.original_filename }}"
+               class="w-full h-28 object-cover bg-slate-100 group-hover:opacity-90 transition">
+          {% else %}
+          <div class="flex h-28 w-full items-center justify-center bg-slate-50 text-slate-400">
+            {{ icons.icon('document', 'w-7 h-7') }}
+          </div>
+          {% endif %}
+          <div class="px-2 py-1.5 text-[11px] text-slate-500 truncate bg-slate-50/60">{{ photo.caption or photo.original_filename }}</div>
+        </a>
+        {% endfor %}
+      </div>
+      {% endif %}
     </div>
   </section>
 
   {% if timed_events %}
   <section>
-    <h2 class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2.5">Belangrijke tijdstippen</h2>
-    <div class="rounded-lg border border-slate-200 bg-white p-5">
-      <ul class="space-y-2.5">
+    <h2 class="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2.5">
+      {{ icons.icon('clock', 'w-3 h-3 text-accent-500') }} Belangrijke tijdstippen
+    </h2>
+    <div class="rounded-[13px] border border-slate-200 bg-white shadow-card p-5">
+      <ul>
         {% for e in timed_events %}
-        <li class="flex items-center gap-3 text-[13px]">
-          <span class="rounded bg-ink-100 px-1.5 py-[3px] font-mono text-[11.5px] font-semibold text-ink-700 tabular">{{ e.exact_time|nl_time }}</span>
-          <span class="text-slate-700">{{ e.title }}</span>
+        <li class="relative pl-4 {{ 'pb-3' if not loop.last else '' }}">
+          {% if not loop.last %}<span class="absolute left-[3.5px] top-3 bottom-0 w-px bg-slate-200"></span>{% endif %}
+          <span class="absolute left-0 top-[5px] h-[7px] w-[7px] rounded-full bg-accent-600"></span>
+          <span class="inline-block mr-2 font-mono text-[11.5px] font-semibold text-accent-700 tabular">{{ e.exact_time|nl_time }}</span>
+          <span class="text-[13px] text-slate-700">{{ e.title }}</span>
         </li>
         {% endfor %}
       </ul>
@@ -47,15 +87,17 @@
   {% endif %}
 
   <section>
-    <h2 class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2.5">Incidentverloop</h2>
+    <h2 class="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2.5">
+      {{ icons.icon('chart', 'w-3 h-3 text-accent-500') }} Incidentverloop
+    </h2>
     {% if not events %}
       {{ c.empty_state("Geen incidentmomenten beschikbaar.") }}
     {% else %}
-    <div class="rounded-lg border border-slate-200 bg-white divide-y divide-slate-100">
+    <div class="rounded-[13px] border border-slate-200 bg-white shadow-card divide-y divide-slate-100">
       {% for e in events %}
       <div class="p-4">
         <div class="flex items-center gap-2 mb-2">
-          <span class="text-[11px] font-mono font-semibold text-slate-400 tabular">
+          <span class="rounded bg-accent-50 px-1.5 py-[3px] text-[11px] font-mono font-semibold text-accent-700 tabular">
             {{ e.exact_time|nl_time if e.exact_time else ("ca. " ~ e.approx_time_text if e.approx_time_text else "geen tijdstip") }}
           </span>
           <span class="font-semibold text-ink-900 text-[13px]">{{ e.title }}</span>
@@ -84,7 +126,9 @@
   </section>
 
   <section>
-    <h2 class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2.5">Wat ging goed</h2>
+    <h2 class="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2.5">
+      {{ icons.icon('check-circle', 'w-3 h-3 text-emerald-500') }} Wat ging goed
+    </h2>
     {% if not positive_findings %}
       {{ c.empty_state("Geen positieve punten geregistreerd.") }}
     {% else %}
@@ -100,7 +144,9 @@
   </section>
 
   <section>
-    <h2 class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2.5">Wat ging minder goed / te bespreken</h2>
+    <h2 class="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2.5">
+      {{ icons.icon('warning', 'w-3 h-3 text-amber-500') }} Wat ging minder goed / te bespreken
+    </h2>
     {% if not discussion_points %}
       {{ c.empty_state("Geen bespreekpunten geregistreerd.") }}
     {% else %}
@@ -116,7 +162,9 @@
   </section>
 
   <section>
-    <h2 class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2.5">Leerpunten</h2>
+    <h2 class="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2.5">
+      {{ icons.icon('sparkle', 'w-3 h-3 text-accent-500') }} Leerpunten
+    </h2>
     {% if not lessons %}
       {{ c.empty_state("Geen leerpunten geregistreerd.") }}
     {% else %}
@@ -132,13 +180,15 @@
   </section>
 
   <section>
-    <h2 class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2.5">Mogelijke verbeteringen</h2>
+    <h2 class="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2.5">
+      {{ icons.icon('pencil', 'w-3 h-3 text-indigo-500') }} Mogelijke verbeteringen
+    </h2>
     {% if not improvements %}
       {{ c.empty_state("Geen verbeteringen geregistreerd.") }}
     {% else %}
     <ul class="space-y-1.5">
       {% for imp in improvements %}
-      <li class="rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-[13px]">
+      <li class="rounded-lg border border-indigo-100 bg-indigo-50/60 px-4 py-2.5 text-[13px]">
         <span class="font-semibold text-ink-900">{{ imp.title }}</span>
         <span class="text-slate-600"> — {{ imp.description }}</span>
       </li>

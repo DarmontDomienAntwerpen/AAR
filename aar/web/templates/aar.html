@@ -16,16 +16,34 @@
   </a>
 </div>
 
+<div class="grid grid-cols-5 gap-3 mb-6">
+  {% for label, value, icon_name, color in [
+    ("Commandanten", commander_reports|length, "users", "slate"),
+    ("Incidentmomenten", events|length, "clock", "accent"),
+    ("Bespreekpunten", discussion_points|length, "warning", "amber"),
+    ("Positieve punten", positive_findings|length, "check-circle", "emerald"),
+    ("Leerpunten", lessons|length, "sparkle", "indigo"),
+  ] %}
+  <div class="relative rounded-[11px] border border-{{ color }}-200 bg-{{ color }}-50 px-4 py-3.5 shadow-card">
+    <span class="absolute top-3 right-3 flex h-6 w-6 items-center justify-center rounded-[7px] bg-{{ color }}-600 text-white">
+      {{ icons.icon(icon_name, 'w-3.5 h-3.5') }}
+    </span>
+    <div class="text-[10.5px] font-semibold uppercase tracking-wide text-{{ color }}-700">{{ label }}</div>
+    <div class="mt-2 text-[26px] font-mono font-semibold text-{{ color }}-900 tabular tracking-tight">{{ value }}</div>
+  </div>
+  {% endfor %}
+</div>
+
 <div class="border-b border-slate-200 mb-7">
   <nav class="flex gap-6 -mb-px">
-    {% for key, label in [("overzicht","Overzicht"), ("verloop","Incidentverloop"), ("bespreken","Te bespreken"), ("positief","Positieve punten"), ("leerpunten","Leerpunten")] %}
+    {% set effective_tab = "bespreken" if tab == "leerpunten" else tab %}
+    {% for key, label in [("overzicht","Overzicht"), ("verslagen","Verslagen"), ("middelen","Middelen"), ("waarnemingen","Waarnemingen & acties"), ("verloop","Incidentverloop"), ("bespreken","Te bespreken/Leerpunten"), ("positief","Positieve punten")] %}
     <a href="/incidents/{{ incident.id }}/aar?tab={{ key }}"
        class="border-b-2 pb-2.5 text-[13px] font-medium transition
-              {{ 'border-ink-900 text-ink-900' if tab == key else 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300' }}">
+              {{ 'border-ink-900 text-ink-900' if effective_tab == key else 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300' }}">
       {{ label }}
-      {% if key == "bespreken" and discussion_points %}<span class="ml-1 text-[11px] text-slate-400 tabular">{{ discussion_points|length }}</span>{% endif %}
+      {% if key == "bespreken" and (discussion_points or lessons) %}<span class="ml-1 text-[11px] text-slate-400 tabular">{{ discussion_points|length }}/{{ lessons|length }}</span>{% endif %}
       {% if key == "positief" and positive_findings %}<span class="ml-1 text-[11px] text-slate-400 tabular">{{ positive_findings|length }}</span>{% endif %}
-      {% if key == "leerpunten" and lessons %}<span class="ml-1 text-[11px] text-slate-400 tabular">{{ lessons|length }}</span>{% endif %}
     </a>
     {% endfor %}
   </nav>
@@ -33,14 +51,18 @@
 
 {% if tab == "overzicht" %}
   {% include "aar/_overzicht.html" %}
+{% elif tab == "verslagen" %}
+  {% include "aar/_verslagen.html" %}
+{% elif tab == "middelen" %}
+  {% include "aar/_middelen.html" %}
+{% elif tab == "waarnemingen" %}
+  {% include "aar/_waarnemingen.html" %}
 {% elif tab == "verloop" %}
   {% include "aar/_verloop.html" %}
-{% elif tab == "bespreken" %}
-  {% include "aar/_bespreken.html" %}
+{% elif tab == "bespreken" or tab == "leerpunten" %}
+  {% include "aar/_bespreken_leerpunten.html" %}
 {% elif tab == "positief" %}
   {% include "aar/_positief.html" %}
-{% elif tab == "leerpunten" %}
-  {% include "aar/_leerpunten.html" %}
 {% endif %}
 
 {% endblock %}

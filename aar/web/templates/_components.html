@@ -16,6 +16,18 @@
 </div>
 {% endmacro %}
 
+{% macro name_chips(names) %}
+  {% if names %}
+  <div class="flex items-center gap-1.5 flex-wrap">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor" class="w-3.5 h-3.5 shrink-0 text-slate-400"><path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
+    <span class="text-[10.5px] font-semibold uppercase tracking-wide text-slate-400">Bron:</span>
+    {% for name in names %}
+    <span class="inline-flex items-center rounded-full bg-slate-100 px-2 py-[3px] text-[11.5px] font-medium text-slate-600">{{ name }}</span>
+    {% endfor %}
+  </div>
+  {% endif %}
+{% endmacro %}
+
 {% macro attributed_to(ids, observations_by_id) %}
   {% set names = [] %}
   {% for oid in ids %}
@@ -23,11 +35,32 @@
       {% set _ = names.append(observations_by_id[oid].attributed_to) %}
     {% endif %}
   {% endfor %}
-  {% if names %}
-  <div class="flex items-center gap-1.5 text-[12px] text-slate-500">
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor" class="w-3.5 h-3.5 shrink-0"><path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
-    <span class="font-medium text-slate-600">{{ names|join(", ") }}</span>
-  </div>
+  {{ name_chips(names) }}
+{% endmacro %}
+
+{% macro lesson_sources(discussion_point_ids, discussion_points_by_id, observations_by_id) %}
+  {% set dps = [] %}
+  {% for did in discussion_point_ids %}{% if did in discussion_points_by_id %}{% set _ = dps.append(discussion_points_by_id[did]) %}{% endif %}{% endfor %}
+  {% set names = [] %}
+  {% for dp in dps %}
+    {% for oid in dp.observation_ids %}
+      {% if oid in observations_by_id and observations_by_id[oid].attributed_to and observations_by_id[oid].attributed_to not in names %}
+        {% set _ = names.append(observations_by_id[oid].attributed_to) %}
+      {% endif %}
+    {% endfor %}
+  {% endfor %}
+  {{ name_chips(names) }}
+  {% if dps %}
+  <details class="mt-2 group">
+    <summary class="cursor-pointer text-[11.5px] font-medium text-slate-400 hover:text-slate-600 select-none">
+      Gebaseerd op {{ dps|length }} bespreekpunt{{ "en" if dps|length != 1 else "" }}
+    </summary>
+    <div class="mt-2 space-y-1.5 border-l-2 border-slate-100 pl-3">
+      {% for dp in dps %}
+      <div class="text-[12px] text-slate-600">{{ dp.title }}</div>
+      {% endfor %}
+    </div>
+  </details>
   {% endif %}
 {% endmacro %}
 
