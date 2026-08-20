@@ -63,3 +63,32 @@ def update_status(session: Session, incident: Incident, status: IncidentStatus) 
     session.commit()
     session.refresh(incident)
     return incident
+
+
+def update_incident_details(
+    session: Session,
+    incident: Incident,
+    *,
+    date: dt.date,
+    location: str,
+    incident_type: IncidentType,
+    description: str,
+) -> Incident:
+    """Facilitator correction of the basic incident record — e.g. a typo in
+    the address caught after creation. Deterministic, no LLM involved."""
+    incident.date = date
+    incident.location = location.strip()
+    incident.incident_type = incident_type
+    incident.description = description.strip()
+    session.commit()
+    session.refresh(incident)
+    return incident
+
+
+def update_initial_call_notes(session: Session, incident: Incident, text: str) -> Incident:
+    """Facilitator's free-text notes on what was known from the initial
+    dispatch call — always human-authored, never touched by (re-)analysis."""
+    incident.initial_call_notes = text.strip()
+    session.commit()
+    session.refresh(incident)
+    return incident

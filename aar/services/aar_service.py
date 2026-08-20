@@ -9,6 +9,7 @@ from __future__ import annotations
 from sqlalchemy.orm import Session
 
 from aar.models import (
+    CommanderReport,
     DiscussionPoint,
     EventPerspective,
     HumanCorrection,
@@ -21,27 +22,14 @@ from aar.models import (
     PositiveFinding,
     SourceDocument,
 )
-from aar.models.enums import ObservationCategory
-from aar.schemas.constants import CATEGORY_LABELS_NL
+from aar.models.enums import ObjectiveAchieved
+from aar.schemas.constants import CRUCIAL_SUMMARY_CATEGORIES
 
-# Which incident moments are decision-relevant enough to belong in a *short*
-# situation summary. Deliberately excludes the more granular/procedural
-# categories (raw observations, available/missing information, assessment,
-# narrative action, general remarks) — those stay fully visible in the
-# per-commander cards and the Incidentverloop tab, just not repeated here.
-# This is a deterministic category filter, not real judgement about
-# importance — a real LLM is what's actually needed for genuine synthesis;
-# this only keeps the mock's draft from being a dump of every category.
-_CRUCIAL_SUMMARY_TITLES = {
-    CATEGORY_LABELS_NL[c]
-    for c in (
-        ObservationCategory.DECISION,
-        ObservationCategory.RESULT,
-        ObservationCategory.OBJECTIVE,
-        ObservationCategory.WENT_WELL,
-        ObservationCategory.WENT_LESS_WELL,
-    )
-}
+# Matched against each event's *observations* (their category), not the
+# event's own title: a real LLM gives events specific, content-derived
+# titles (e.g. "Beslissing opschaling en zoekactie P34"), never the bare
+# category label — matching against the title left this filter finding
+# nothing and the summary permanently empty for real analyses.
 
 # -- reads -------------------------------------------------------------
 
@@ -85,6 +73,42 @@ def update_event_summary(session: Session, event: IncidentEvent, new_summary: st
     session.commit()
     session.refresh(event)
     return event
+
+
+def update_commander_notes(session: Session, report: CommanderReport, text: str) -> CommanderReport:
+    """Facilitator's live notes captured while this commander talks through
+    their part during the AAR meeting — never touched by re-analysis."""
+    report.facilitator_notes = text.strip()
+    session.commit()
+    session.refresh(report)
+    return report
+
+
+def update_commander_identity(
+    session: Session,
+    report: CommanderReport,
+    *,
+    callsign: str,
+    unit_name: str,
+    rank: str,
+    surname: str,
+    objective_achieved: "ObjectiveAchieved | None",
+    objective_achieved_explanation: str,
+) -> CommanderReport:
+    """Facilitator correction of a commander's identity fields and their own
+    objective-achieved self-assessment (spec: this field is always the
+    commander's own verbatim answer, never AI-judged — this only lets the
+    facilitator fix a transcription error, not override the commander's
+    assessment on their behalf without their say-so)."""
+    report.callsign = callsign.strip()
+    report.unit_name = unit_name.strip()
+    report.rank = rank.strip()
+    report.surname = surname.strip()
+    report.objective_achieved = objective_achieved
+    report.objective_achieved_explanation = objective_achieved_explanation.strip()
+    session.commit()
+    session.refresh(report)
+    return report
 
 
 def add_manual_event(session: Session, incident: Incident, title: str) -> IncidentEvent:
@@ -131,6 +155,13 @@ def update_discussion_point(session: Session, dp: DiscussionPoint, title: str, d
 def delete_discussion_point(session: Session, dp: DiscussionPoint) -> None:
     session.delete(dp)
     session.commit()
+
+
+def toggle_discussion_point_discussed(session: Session, dp: DiscussionPoint) -> DiscussionPoint:
+    dp.discussed = not dp.discussed
+    session.commit()
+    session.refresh(dp)
+    return dp
 
 
 def add_manual_positive_finding(session: Session, incident: Incident, title: str, description: str) -> PositiveFinding:
@@ -231,7 +262,17 @@ def default_situation_summary(session: Session, incident: Incident) -> str:
     about the same moment; collapsing that into one blended narrative would
     misrepresent it as a single agreed-upon account."""
     events = get_events(session, incident)
-    relevant = [e for e in events if e.is_human_added or e.title in _CRUCIAL_SUMMARY_TITLES]
+    crucial_obs_ids = {
+        oid
+        for (oid,) in session.query(Observation.id)
+        .filter(Observation.incident_id == incident.id, Observation.category.in_(CRUCIAL_SUMMARY_CATEGORIES))
+        .all()
+    }
+    relevant = [
+        e
+        for e in events
+        if e.is_human_added or any(oid in crucial_obs_ids for oid in (e.observation_ids or []))
+    ]
     blocks: list[str] = []
     for event in relevant:
         lines = [f"{p.commander_display_name}: {p.perspective_text}" for p in event.perspectives if p.perspective_text]

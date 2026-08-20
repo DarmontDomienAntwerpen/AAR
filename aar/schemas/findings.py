@@ -7,7 +7,7 @@ from aar.models.enums import ConfidenceState, DiscussionOrigin
 
 
 class DiscussionPointCandidate(BaseModel):
-    title: str = Field(min_length=1)
+    title: str = Field(min_length=1, description="Kort en telegramstijl, geen volzin.")
     description: str = Field(min_length=1)
     origin_category: DiscussionOrigin = DiscussionOrigin.OTHER
     confidence_state: ConfidenceState = ConfidenceState.ONVOLDOENDE_BEWIJS
@@ -16,7 +16,7 @@ class DiscussionPointCandidate(BaseModel):
 
 
 class PositiveFindingCandidate(BaseModel):
-    title: str = Field(min_length=1)
+    title: str = Field(min_length=1, description="Kort en telegramstijl, geen volzin.")
     description: str = Field(min_length=1)
     observation_ids: list[int] = Field(default_factory=list)
     event_title: str | None = None

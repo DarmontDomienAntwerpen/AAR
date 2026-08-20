@@ -39,8 +39,19 @@ _SOURCE_TYPES = (
 _ADDENDUM = """\
 TAAK: Analyse van het gereconstrueerde incidentverloop.
 
-Je krijgt de waarnemingen en de gegroepeerde incidentmomenten (events). Zoek \
-actief naar:
+Je krijgt de waarnemingen en de gegroepeerde incidentmomenten (events). Elke \
+waarneming heeft al een observation_type. Dit is GEEN vrijblijvende \
+suggestie: een waarneming met observation_type "assumption", "uncertainty" \
+of "conflict" IS per definitie een bespreekpunt — die moet je vrijwel altijd \
+opnemen als discussion_point, tenzij de inhoud triviaal is (bv. een \
+tijdsaanduiding die niemand ter discussie stelt). Rule 5 uit de \
+kernprincipes ("als bewijs onvoldoende is, zeg dat expliciet") gaat over het \
+verzinnen van FEITEN — niet over terughoudendheid bij het signaleren van \
+bespreekpunten die al als onzeker/veronderstelling/tegenstrijdig \
+gelabeld zijn. Lege lijsten teruggeven terwijl de data zulke waarnemingen \
+bevat, is een fout.
+
+Zoek daarnaast actief naar:
 - discussion_points: mogelijke bespreekpunten — vanuit onzekerheid, \
 veronderstellingen, tegenstrijdigheden tussen bronnen, niet-behaalde \
 doelen, onverwachte resultaten, mogelijke coördinatie- of \
@@ -53,6 +64,15 @@ zegt dat iets goed ging — bijvoorbeeld merkbaar effectieve coördinatie.
 - ai_observations: patronen die je zelf opmerkt maar die geen enkele bron \
 expliciet benoemt. Wees hier terughoudend en alleen concreet onderbouwd \
 door de meegegeven observation_ids.
+
+BELANGRIJK — combineer, dupliceer niet: als meerdere waarnemingen van \
+VERSCHILLENDE commandanten (verschillende commander_report_id) hetzelfde \
+onderliggende punt beschrijven — ook al is de bewoording anders — maak daar \
+dan ÉÉN discussion_point of positive_finding van, met alle betrokken \
+observation_ids samen in observation_ids (dus niet één punt per \
+commandant). Zo blijft het overzicht kort en zie je meteen welke \
+commandanten hetzelfde punt maakten, in plaats van hetzelfde punt twee of \
+drie keer na elkaar te lezen.
 
 Gebruik uitsluitend de meegegeven observation_ids als bewijs. Verzin geen \
 gebeurtenissen, oorzaken of personen die niet in de gegevens voorkomen. \

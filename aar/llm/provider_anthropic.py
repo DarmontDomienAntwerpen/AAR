@@ -18,7 +18,7 @@ class LLMProviderError(Exception):
 
 
 class AnthropicProvider(LLMProvider):
-    def __init__(self, api_key: str, model: str, max_tokens: int = 4096) -> None:
+    def __init__(self, api_key: str, model: str, max_tokens: int = 16000) -> None:
         import anthropic  # local import: only required for this provider
 
         self._client = anthropic.Anthropic(api_key=api_key)

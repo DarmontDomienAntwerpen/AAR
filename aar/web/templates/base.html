@@ -32,6 +32,10 @@
     ::-webkit-scrollbar-thumb { background: #d4d4d8; border-radius: 9999px; }
     ::-webkit-scrollbar-track { background: transparent; }
     .tabular { font-variant-numeric: tabular-nums; }
+    /* Grote weergave: schaalt de volledige inhoud proportioneel op voor
+       projectie/schermdelen tijdens een AAR-bespreking, zonder dat elke
+       losse tekstgrootte in de templates aangepast moet worden. */
+    main.presentation-mode { zoom: 1.35; }
   </style>
 </head>
 <body class="h-full font-sans text-ink-900 antialiased text-[14px]">
@@ -106,12 +110,19 @@
       </nav>
       {% endif %}
 
-      <div class="mt-auto px-5 py-4 border-t border-white/[0.06] text-[11px] text-ink-500">
-        Interne tool &middot; v1
+      <div class="mt-auto px-5 py-4 border-t border-white/[0.06] space-y-3">
+        <button id="presentation-toggle" type="button"
+                class="flex w-full items-center gap-2 rounded-md px-2.5 py-[7px] text-[12.5px] font-medium text-ink-400 hover:bg-white/[0.04] hover:text-ink-100 transition">
+          {{ icons.icon('eye', 'w-[15px] h-[15px]') }}
+          <span id="presentation-toggle-label">Grote weergave</span>
+        </button>
+        <div class="text-[11px] text-ink-500">
+          Interne tool &middot; v1
+        </div>
       </div>
     </aside>
 
-    <main class="flex-1 overflow-y-auto bg-neutral-50">
+    <main id="main-content" class="flex-1 overflow-y-auto bg-neutral-50">
       <div class="max-w-{{ content_width|default('5xl') }} mx-auto px-10 py-9">
         {% set flash = request.query_params.get('flash') %}
         {% set flash_type = request.query_params.get('flash_type', 'success') %}
@@ -128,5 +139,54 @@
       </div>
     </main>
   </div>
+
+  <div id="photo-lightbox" class="hidden fixed inset-0 z-50 items-center justify-center bg-black/80 p-6 cursor-zoom-out" onclick="closeLightbox()">
+    {# Explicit w/h (not max-w/max-h) so small source photos are upscaled to
+       fill most of the screen for projectie/schermdelen — object-contain
+       keeps the aspect ratio, no distortion. #}
+    <img id="photo-lightbox-img" src="" alt=""
+         class="rounded-lg shadow-2xl object-contain"
+         style="width: 92vw; height: 92vh;">
+  </div>
+
+  <script>
+    function openLightbox(src) {
+      document.getElementById('photo-lightbox-img').src = src;
+      var lb = document.getElementById('photo-lightbox');
+      lb.classList.remove('hidden');
+      lb.classList.add('flex');
+    }
+    function closeLightbox() {
+      var lb = document.getElementById('photo-lightbox');
+      lb.classList.add('hidden');
+      lb.classList.remove('flex');
+      document.getElementById('photo-lightbox-img').src = '';
+    }
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') closeLightbox();
+    });
+  </script>
+
+  <script>
+    (function () {
+      var STORAGE_KEY = 'aar-presentation-mode';
+      var main = document.getElementById('main-content');
+      var btn = document.getElementById('presentation-toggle');
+      var label = document.getElementById('presentation-toggle-label');
+
+      function apply(enabled) {
+        main.classList.toggle('presentation-mode', enabled);
+        label.textContent = enabled ? 'Normale weergave' : 'Grote weergave';
+      }
+
+      apply(localStorage.getItem(STORAGE_KEY) === 'true');
+
+      btn.addEventListener('click', function () {
+        var enabled = !main.classList.contains('presentation-mode');
+        apply(enabled);
+        localStorage.setItem(STORAGE_KEY, enabled ? 'true' : 'false');
+      });
+    })();
+  </script>
 </body>
 </html>

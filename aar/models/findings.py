@@ -29,6 +29,7 @@ class DiscussionPoint(Base):
     )
     observation_ids: Mapped[list] = mapped_column(JSON, default=list)
     is_human_added: Mapped[bool] = mapped_column(Boolean, default=False)
+    discussed: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime, server_default=func.now())
 
     incident: Mapped["Incident"] = relationship(back_populates="discussion_points")

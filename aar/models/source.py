@@ -72,6 +72,11 @@ class CommanderReport(Base):
     )
     extraction_error: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    # Facilitator's live notes captured while this commander talks through
+    # their part during the AAR meeting itself — deliberately separate from
+    # any AI-generated content (never overwritten by re-analysis).
+    facilitator_notes: Mapped[str] = mapped_column(Text, default="")
+
     incident: Mapped["Incident"] = relationship(back_populates="commander_reports")
     source_document: Mapped["SourceDocument"] = relationship(back_populates="commander_report")
     observations: Mapped[list["Observation"]] = relationship(back_populates="commander_report")

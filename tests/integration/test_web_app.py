@@ -7,8 +7,6 @@ pattern documented for the (removed) Streamlit AppTest suite.
 """
 from __future__ import annotations
 
-import io
-
 import pytest
 from fastapi.testclient import TestClient
 

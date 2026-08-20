@@ -46,9 +46,9 @@ def test_full_pipeline_end_to_end(session, sample_incident):
         sample_incident,
         "P12",
         {
-            "observations": "Bij aankomst was er zware rookontwikkeling op de eerste verdieping.",
-            "doubts_assumptions": "Ik ging ervan uit dat de achterzijde al gecontroleerd was door P21.",
-            "went_well": "De coördinatie tussen de eenheden verliep vlot.",
+            "situation": "Bij aankomst was er zware rookontwikkeling op de eerste verdieping.",
+            "other": "Ik ging ervan uit dat de achterzijde al gecontroleerd was door P21.",
+            "evaluation": "De coördinatie tussen de eenheden verliep vlot.",
         },
     )
     _make_report(
@@ -56,8 +56,8 @@ def test_full_pipeline_end_to_end(session, sample_incident):
         sample_incident,
         "P21",
         {
-            "observations": "Rook was zichtbaar aan de achterzijde van het pand.",
-            "doubts_assumptions": "Volgens mij was er niemand meer binnen op dat moment.",
+            "situation": "Rook was zichtbaar aan de achterzijde van het pand.",
+            "other": "Volgens mij was er niemand meer binnen op dat moment.",
         },
     )
 
@@ -101,7 +101,7 @@ def test_pipeline_records_error_and_preserves_earlier_stage_progress_on_mid_run_
     session, sample_incident
 ):
     _make_report(
-        session, sample_incident, "P12", {"observations": "Bij aankomst was er rookontwikkeling."}
+        session, sample_incident, "P12", {"situation": "Bij aankomst was er rookontwikkeling."}
     )
 
     run = run_analysis(session, sample_incident, _FailsOnFindingsProvider())
@@ -135,7 +135,7 @@ def test_pipeline_rerun_does_not_duplicate_events(session, sample_incident):
         session,
         sample_incident,
         "P12",
-        {"observations": "Bij aankomst was er zware rookontwikkeling."},
+        {"situation": "Bij aankomst was er zware rookontwikkeling."},
     )
     run_analysis(session, sample_incident, MockLLMProvider())
     first_event_count = session.query(IncidentEvent).filter_by(incident_id=sample_incident.id).count()

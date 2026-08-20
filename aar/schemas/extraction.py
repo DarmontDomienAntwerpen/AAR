@@ -12,7 +12,13 @@ from aar.models.enums import ObservationCategory, ObservationType
 
 
 class ExtractedItem(BaseModel):
-    content: str = Field(min_length=1, description="Normalised/interpreted statement")
+    content: str = Field(
+        min_length=1,
+        description=(
+            "Normalised/interpreted statement. Kort en telegramstijl (zie kernprincipes) — "
+            "dit is wat de facilitator scant, niet het volledige verslag."
+        ),
+    )
     source_passage: str = Field(
         min_length=1, description="Verbatim excerpt from the report supporting this item"
     )

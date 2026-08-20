@@ -17,7 +17,7 @@ class ReconstructedPerspective(BaseModel):
 
 
 class ReconstructedEvent(BaseModel):
-    title: str = Field(min_length=1)
+    title: str = Field(min_length=1, description="Kort en telegramstijl, bv. 'Aanval LD V2'.")
     order_hint: int = Field(description="Relative order among events in this same output, low=earlier")
     ai_summary: str = Field(min_length=1)
     involved_units: list[str] = Field(default_factory=list)

@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import datetime as dt
 
-from fastapi import APIRouter, Depends, Form, Request
+from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from aar.models import IncidentType
 from aar.schemas.forms import IncidentCreateForm
+from aar.services import media_service
+from aar.services.errors import DuplicateSourceError
 from aar.services.incident_service import create_incident
 from aar.web.deps import get_db
 from aar.web.flash import redirect_with_flash
@@ -26,12 +28,13 @@ def new_incident_form(request: Request):
 
 
 @router.post("/incidents/new")
-def create_incident_submit(
+async def create_incident_submit(
     request: Request,
     date: str = Form(""),
     location: str = Form(""),
     incident_type: str = Form(""),
     description: str = Form(""),
+    photos: list[UploadFile] = File(default=[]),
     session: Session = Depends(get_db),
 ):
     try:
@@ -58,4 +61,21 @@ def create_incident_submit(
         )
 
     incident = create_incident(session, form)
+
+    photo_warnings = []
+    for f in photos:
+        if not f.filename:
+            continue
+        content = await f.read()
+        try:
+            media_service.ingest_photo(session, incident, content, f.filename)
+        except (DuplicateSourceError, media_service.UnsupportedMediaTypeError) as exc:
+            photo_warnings.append(str(exc))
+
+    if photo_warnings:
+        return redirect_with_flash(
+            f"/incidents/{incident.id}/sources",
+            "Incident aangemaakt. " + "; ".join(photo_warnings),
+            "warning",
+        )
     return redirect_with_flash(f"/incidents/{incident.id}/sources", "Incident aangemaakt.")

@@ -14,18 +14,12 @@ from aar.models.enums import ObjectiveAchieved
 # Section keys used both by the DOCX template generator and the parser.
 # Keep this list and the template headings in `templates/` in sync.
 COMMANDER_REPORT_SECTION_KEYS: list[str] = [
-    "observations",
-    "information_position",
-    "assessment",
-    "decision",
-    "objective",
-    "narrative",
-    "result",
+    "situation",
+    "actions",
     "went_well",
     "went_less_well",
-    "why",
-    "doubts_assumptions",
     "other",
+    "difficulties",
 ]
 
 
@@ -56,6 +50,16 @@ class CommanderReportRaw(BaseModel):
     objective_achieved: ObjectiveAchieved | None = None
     objective_achieved_explanation: str = ""
     source_filename: str
+
+
+class CommanderReportSheetRaw(BaseModel):
+    """Result of deterministically parsing a Google-Forms-exported responses
+    sheet: one row per commander, each becoming its own CommanderReportRaw."""
+
+    reports: list[CommanderReportRaw] = Field(default_factory=list)
+    source_filename: str
+    sheet_name: str
+    warnings: list[str] = Field(default_factory=list)
 
 
 class DispatchRecordRaw(BaseModel):

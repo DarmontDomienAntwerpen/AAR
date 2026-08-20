@@ -21,11 +21,37 @@ logger = get_logger("analysis.lessons")
 _ADDENDUM = """\
 TAAK: Voorstellen van leerpunten en mogelijke verbeteringen.
 
-Je krijgt de bespreekpunten en positieve punten die al werden vastgesteld. \
+Je krijgt de bespreekpunten en positieve punten die al werden vastgesteld — \
+die zijn in een eerdere stap al beoordeeld als relevant genoeg om te \
+bespreken. Als er bespreekpunten of positieve punten zijn meegegeven, MOET \
+je daar minstens één leerpunt en/of verbetervoorstel uit afleiden — een \
+lege lijst teruggeven terwijl er input is, is een fout. Alleen als de \
+lijsten écht leeg zijn mag je zelf ook niets teruggeven.
+
 Stel op basis daarvan leerpunten (lessons) en mogelijke verbeteringen \
-(improvements) voor. Dit zijn voorstellen ter bespreking, geen \
-vaststaande conclusies. Ken geen eigenaar, deadline of status toe — dat \
-valt buiten deze tool. Wijs geen schuld toe. Baseer je uitsluitend op de \
+(improvements) voor. Cluster per onderliggend thema: als meerdere \
+bespreekpunten in essentie hetzelfde onderwerp raken (bv. drie keer \
+onzekerheid over slachtoffertelling), maak daar dan ÉÉN leerpunt van dat \
+naar alle betrokken bespreekpunten verwijst — niet één bijna-identiek \
+leerpunt per bespreekpunt.
+
+BELANGRIJK voor title: vermeld altijd hoe vaak dit thema voorkwam, in het \
+formaat "{thema} ({N}x aangetroffen)" — bv. "Onzekerheid (7x aangetroffen)". \
+Tel het aantal bespreekpunten dat je in dit leerpunt clustert.
+
+BELANGRIJK voor description: schrijf een ECHTE synthese van 1-2 korte \
+zinnen die zegt WAT er precies onzeker/het thema was over alle {N} gevallen \
+heen — niet alleen dát het N keer voorkwam, maar WAAROVER (bv. "Onzeker \
+over exact aantal en locatie van slachtoffers bij aanvang, bij meerdere \
+commandanten." — niet "Dit kwam 7x voor."). Plak NOOIT de losse \
+bespreekpunt-beschrijvingen achter elkaar met puntkomma's — dat is geen \
+synthese, dat is een opsomming, en dat is precies wat dit veld niet mag \
+zijn. Wie de individuele gevallen wil zien klikt door naar de \
+bespreekpunten zelf (die blijven via discussion_point_titles gekoppeld).
+
+Dit zijn voorstellen ter bespreking, geen vaststaande conclusies. Ken geen \
+eigenaar, deadline of status toe — dat valt buiten deze tool. Wijs geen \
+schuld toe. Baseer je uitsluitend op de \
 meegegeven bespreek- en positieve punten.\
 """
 

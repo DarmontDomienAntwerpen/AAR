@@ -22,10 +22,11 @@ def archive(
     incidents = list_incidents(session, search_text=q, incident_type=incident_type)
 
     all_incidents = incidents if not (q or type) else list_incidents(session)
+    finalized = sum(1 for i in all_incidents if i.status == IncidentStatus.FINALIZED)
     stats = {
         "total": len(all_incidents),
-        "in_review": sum(1 for i in all_incidents if i.status == IncidentStatus.IN_REVIEW),
-        "finalized": sum(1 for i in all_incidents if i.status == IncidentStatus.FINALIZED),
+        "in_review": len(all_incidents) - finalized,
+        "finalized": finalized,
     }
 
     return templates.TemplateResponse(

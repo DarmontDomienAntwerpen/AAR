@@ -76,8 +76,8 @@ def test_no_cause_mentioned_none_is_fabricated(session, sample_incident):
         sample_incident,
         "P12",
         {
-            "observations": "Bij aankomst was er rookontwikkeling zichtbaar aan de voorzijde.",
-            "narrative": "We zijn naar binnen gegaan en hebben de brand geblust.",
+            "situation": "Bij aankomst was er rookontwikkeling zichtbaar aan de voorzijde.",
+            "actions": "We zijn naar binnen gegaan en hebben de brand geblust.",
         },
     )
     run = run_analysis(session, sample_incident, MockLLMProvider())
@@ -94,8 +94,8 @@ def test_no_victim_mentioned_none_is_invented(session, sample_incident):
         sample_incident,
         "P12",
         {
-            "observations": "Bij aankomst was er rookontwikkeling zichtbaar op het gelijkvloers.",
-            "narrative": "De brand werd snel onder controle gebracht zonder verdere bijzonderheden.",
+            "situation": "Bij aankomst was er rookontwikkeling zichtbaar op het gelijkvloers.",
+            "actions": "De brand werd snel onder controle gebracht zonder verdere bijzonderheden.",
             "result": "Het pand werd nadien geventileerd.",
         },
     )
@@ -110,11 +110,11 @@ def test_no_victim_mentioned_none_is_invented(session, sample_incident):
 def test_conflicting_accounts_both_preserved_not_silently_resolved(session, sample_incident):
     r1 = _make_report(
         session, sample_incident, "P12",
-        {"narrative": "Ik gaf de opdracht aan P21 om de achterzijde te controleren."},
+        {"actions": "Ik gaf de opdracht aan P21 om de achterzijde te controleren."},
     )
     r2 = _make_report(
         session, sample_incident, "P21",
-        {"narrative": "Ik heb geen opdracht ontvangen om de achterzijde te controleren."},
+        {"actions": "Ik heb geen opdracht ontvangen om de achterzijde te controleren."},
     )
     run_analysis(session, sample_incident, MockLLMProvider())
 
@@ -132,7 +132,7 @@ def test_no_narrative_time_means_no_events_get_an_exact_time(session, sample_inc
         sample_incident,
         "P12",
         {
-            "observations": "Rook was zichtbaar bij aankomst.",
+            "situation": "Rook was zichtbaar bij aankomst.",
             "decision": "We besloten een interne aanval in te zetten.",
             "result": "De brand werd geblust.",
         },

@@ -25,6 +25,11 @@ class Incident(Base):
         nullable=False,
     )
     situation_summary: Mapped[str] = mapped_column(Text, default="")
+    ai_situation_narrative: Mapped[str | None] = mapped_column(Text, default=None, nullable=True)
+    # Free-text notes the facilitator types in with what was known from the
+    # initial dispatch call — always human-authored, never AI-generated or
+    # touched by (re-)analysis.
+    initial_call_notes: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[dt.datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[dt.datetime] = mapped_column(
         DateTime, server_default=func.now(), onupdate=func.now()
