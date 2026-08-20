@@ -15,7 +15,6 @@ def _make_filled_docx_bytes(tmp_path: Path, callsign: str = "P12") -> bytes:
     doc = Document(str(path))
     doc.tables[0].rows[0].cells[1].text = callsign
     doc.tables[0].rows[3].cells[1].text = "Janssens"
-    doc.tables[1].rows[0].cells[1].text = "Ja"
     doc.save(str(path))
     return path.read_bytes()
 

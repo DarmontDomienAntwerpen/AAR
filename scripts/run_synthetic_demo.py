@@ -22,7 +22,7 @@ import tempfile  # noqa: E402
 
 from aar.config.logging_setup import configure_logging, get_logger  # noqa: E402
 from aar.db.session import get_engine, get_session, init_db  # noqa: E402
-from aar.models import IncidentType  # noqa: E402
+from aar.models import CommanderReport, IncidentType, ObjectiveAchieved  # noqa: E402
 from aar.schemas.forms import IncidentCreateForm  # noqa: E402
 from aar.services.analysis_service import trigger_analysis  # noqa: E402
 from aar.services.dispatch_service import ingest_dispatch_excel  # noqa: E402
@@ -30,6 +30,7 @@ from aar.services.incident_service import create_incident  # noqa: E402
 from aar.services.report_service import ingest_commander_report  # noqa: E402
 from fixtures.synthetic_incident.build_fixture import (  # noqa: E402
     INCIDENT,
+    REPORTS,
     build_commander_reports,
     build_dispatch_excel,
 )
@@ -51,12 +52,25 @@ def main() -> None:
     incident = create_incident(session, form)
     print(f"Created demo incident #{incident.id}: {incident.location}")
 
+    objective_by_callsign = {spec["callsign"]: spec for spec in REPORTS}
+
     with tempfile.TemporaryDirectory() as tmp:
         tmp_path = Path(tmp)
         report_paths = build_commander_reports(tmp_path / "reports")
         for path in report_paths:
             doc = ingest_commander_report(session, incident, path.read_bytes(), path.name)
             print(f"  Ingested {path.name}: {doc.parse_status.value}")
+
+            # The template no longer asks for the overall doelbereik answer
+            # (spec: that's discussed live during the AAR, not written in
+            # the report) — apply the fixture's illustrative Ja/Gedeeltelijk
+            # values directly so the demo still shows the roster badges.
+            report = session.query(CommanderReport).filter_by(source_document_id=doc.id).one_or_none()
+            spec = objective_by_callsign.get(report.callsign) if report else None
+            if report is not None and spec is not None:
+                report.objective_achieved = ObjectiveAchieved(spec["objective_achieved"])
+                report.objective_achieved_explanation = spec["objective_achieved_explanation"]
+                session.commit()
 
         dispatch_path = build_dispatch_excel(tmp_path / "dispatch")
         doc = ingest_dispatch_excel(session, incident, dispatch_path.read_bytes(), dispatch_path.name)
