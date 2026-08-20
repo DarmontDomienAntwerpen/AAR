@@ -726,24 +726,169 @@ change).
   duplicating the regex, used in both the compact and full-report views.
   111/112 tests passing (1 documented skip, unrelated); verified via fresh
   screenshots.
+- **Phase 21 (post-handoff, user-requested): first real-provider run,
+  found/fixed real bugs, dedup + UX cleanup.** The user obtained a real
+  `ANTHROPIC_API_KEY` and asked to run the actual pipeline for the first
+  time (`AAR_LLM_PROVIDER=anthropic`, model `claude-sonnet-5`). This
+  surfaced two genuine reliability bugs that the mock provider could never
+  have exposed:
+  1. **`max_tokens` truncation, silently swallowed.** `AnthropicProvider`
+     defaulted to `max_tokens=4096`; the reconstruction stage on the demo
+     incident (47 observations) needed 4057 of them — a single larger
+     incident would silently truncate mid-JSON. Worse, `generate_structured`'s
+     retry path (`aar/llm/base.py`) asks the model to "try again", and the
+     model's second attempt returned syntactically *valid* JSON with an
+     empty `events: []` rather than failing loudly — Pydantic validation
+     passed, so the pipeline reported `SUCCESS` with a silently empty
+     result. Fixed by raising the default to `max_tokens=16000`
+     (`aar/llm/provider_anthropic.py`).
+  2. **Real model was too literal about "never invent things."** The
+     findings and lessons stages consistently returned empty
+     `discussion_points`/`positive_findings`/`lessons` even with rich input
+     data (7 uncertainty + 2 assumption observations) — not truncation
+     (output stayed well under the token limit), the model was
+     over-applying core safety rule 5 ("if evidence is insufficient, say so
+     explicitly") to *interpretive* judgement calls it was actually asked
+     to make. Fixed by adding explicit addenda to `aar/analysis/findings.py`
+     and `aar/analysis/lessons.py` clarifying that rule 5 is about
+     fabricating *facts*, not about declining to synthesize from
+     already-labelled input, plus a "returning an empty list when the input
+     clearly supports output is a mistake" instruction. Verified by direct
+     `count_tokens`/`messages.create` calls before and after, then by a
+     full pipeline run through the running app.
+  Separately, the user reported real duplication in the output: the same
+  point from two commanders' reports was appearing as two near-identical
+  `discussion_point`/`positive_finding`/`lesson` entries instead of one.
+  The schemas already supported multi-report attribution
+  (`observation_ids: list[int]`, and `_components.html::attributed_to`
+  already de-duplicates/joins names) — the gap was purely in the prompt:
+  `findings.py`'s addendum now explicitly instructs merging waarnemingen
+  from *different* `commander_report_id`s that describe the same
+  underlying point into one entry with combined `observation_ids`, and
+  `lessons.py`'s addendum instructs clustering by theme instead of one
+  near-identical lesson per discussion point. Verified live: a positive
+  finding ("SO tijdig aangetroffen en overgedragen aan MUG") now correctly
+  attributes to all three commanders who reported it in one entry.
+  Also added, per explicit user request, output-style rules to the shared
+  system prompt (`aar/llm/prompts/system_prompts.py`): titles/summaries
+  must be short "telegram style" (full rationale given to the model: the
+  detailed explanation happens verbally during the AAR meeting itself, this
+  text is a scannable index, not the full report) with the user's exact
+  worked example, plus fixed domain abbreviations (HD/LD/SAR/SO, and
+  V+number for floors, e.g. V2).
+  Then, reviewing the resulting real output end-to-end (screenshots of
+  every screen) surfaced three more issues, unrelated to the LLM:
+  - **`default_situation_summary` was permanently empty for any real
+    analysis** (previously listed below as spec §63 "UNVERIFIED" — now
+    verified, and found broken). It filtered incident events by
+    `event.title in _CRUCIAL_SUMMARY_TITLES`, a set of bare category labels
+    ("Beslissing", "Resultaat", ...) — that only ever matched because the
+    *mock* happens to title every event after its category. A real LLM
+    gives events specific, content-derived titles ("Beslissing opschaling
+    en zoekactie P34") that never equal a bare label, so the filter matched
+    zero events on every real run. Fixed in `aar/services/aar_service.py`
+    to instead check each event's linked `Observation.category` (via
+    `observation_ids`) — semantically correct and works for both providers
+    (regression test added:
+    `test_default_situation_summary_matches_on_observation_category_not_title`).
+  - Description `<textarea rows="2">` fields in `_bespreken.html`,
+    `_positief.html`, `_leerpunten.html` clipped real (longer) LLM output
+    mid-sentence with no visual indication more text existed. Bumped to
+    `rows="5"` for the pre-filled fields (the empty "add manually" forms
+    were left at `rows="2"`, they start empty).
+  - The commander-card body on the Overzicht tab showed the exact same
+    beslissing/resultaat sentences three times over (gist band → full
+    WAARNEMINGEN/INSCHATTING/BESLISSING/RESULTAAT/WAT GING (MINDER) GOED
+    block → "Volledig verslag lezen" disclosure repeats all six again).
+    Trimmed the always-visible block to just WAT GING GOED/MINDER GOED
+    (`commander_section_fields[-2:]`) — the two fields not already covered
+    by the gist and most directly relevant to an AAR — moving
+    waarnemingen/inschatting/beslissing/resultaat exclusively into
+    "Volledig verslag lezen". Also gave the Definitieve AAR page's
+    "Situatie" section a helpful empty-state message with a direct link
+    instead of a bare "—" when nothing has been saved yet.
+  112/112 tests passing (1 documented skip, unrelated — see below).
+  Switched back to `AAR_LLM_PROVIDER=mock` at the user's explicit request
+  before further UI iteration, to stop spending API budget on repeated
+  re-analysis runs while tuning the interface.
+- **Phase 22 (post-handoff, user-requested): dedicated narrative-synthesis
+  stage; free-form report fallback.** Even after the Phase 21 category-match
+  fix, the user pushed back that the situation summary was still "loose
+  stories, not a global overview" — correctly: `default_situation_summary`
+  is, and always was, a deterministic per-event/per-commander *listing*,
+  never real synthesis (documented as a real-LLM-only capability since
+  Phase 19, but never actually built). Built it properly this time instead
+  of patching the listing again:
+  - New Stage 7 (`aar/analysis/narrative.py`, `SituationNarrativeOutput` in
+    `aar/schemas/narrative.py`): takes every reconstructed event with all
+    its commander perspectives, chronologically, and asks for ONE flowing
+    prose account — merge where sources complement each other, but
+    explicitly name (not silently resolve) genuine disagreements, grounded
+    only in given data. Result stored in a new
+    `Incident.ai_situation_narrative` column (separate from the
+    facilitator-owned `situation_summary` field — same "AI proposes, human
+    finalises" pattern as everything else in this tool).
+  - `MockLLMProvider._narrative()` added for schema-dispatch completeness,
+    but deliberately kept as an honestly-labelled non-synthesis fallback
+    (module docstring is explicit about this) — the mock has no semantic
+    understanding to actually merge accounts with.
+  - Wired into `run_analysis()` after the lessons stage; both AAR routes
+    now resolve the summary as `situation_summary or ai_situation_narrative
+    or default_situation_summary(...)` (facilitator edit > AI synthesis >
+    old deterministic listing, in that priority order).
+  - Added `ai_situation_narrative` column via a manual `ALTER TABLE` on the
+    local dev DB (no migration framework in this project — `create_all`
+    only creates missing tables, not missing columns on an existing one;
+    note this for any future schema change against the existing
+    `data/aar.db`).
+  - Verified end-to-end via the mock provider (confirms the wiring/DB/route
+    priority all work); genuine prose-synthesis *quality* is explicitly
+    unverified until run once against the real provider — see §9.
+  Separately, the user shared a realistic commander-report example that
+  used none of the template's section headings at all (free-form prose
+  with the writer's own headers). Confirmed this would have hit the
+  existing hard rejection (`CommanderReportParseError`, "geen enkele sectie
+  herkend"). Fixed `aar/ingestion/commander_docx.py::_extract_sections` to
+  fall back to capturing the whole document as one passage under the
+  "narrative" section key (→ `ObservationCategory.ACTION`) instead of
+  rejecting the upload, with an explicit warning shown to the facilitator —
+  the real-provider extraction stage classifies each item's category from
+  its content already, not from which section it arrived in, so it can
+  still do useful work on this fallback text (the mock's cruder
+  section-derived categorisation loses granularity here, an accepted
+  mock-only trade-off). Still raises `CommanderReportParseError` for a
+  genuinely empty/unreadable document. The user then clarified they will
+  enforce template compliance operationally going forward, so this is a
+  safety net rather than the primary path — no further investment planned
+  here unless it resurfaces.
+  115/115 tests passing (1 documented skip, unrelated).
 
 ## 9. Open Work / Known Bugs / Blocked / Unverified / Technical Debt
 
-- **UNVERIFIED (by design, needs real provider):** spec §63 conditions C
-  (conflicting-order detection between two reports) and E (unlabelled
-  positive pattern across reports) are beyond the deterministic mock's
-  reach. Verify manually: set `AAR_LLM_PROVIDER=anthropic` and
-  `ANTHROPIC_API_KEY` in `.env`, run `python scripts/run_synthetic_demo.py`
-  (or upload the same fixture through the UI), and inspect whether the
-  resulting discussion points include the P12/P21 order conflict and
-  whether a positive finding about the P34/O01 rescue handoff appears.
-- **BLOCKED:** `AnthropicProvider` has never been exercised against the
-  real Anthropic API — no `ANTHROPIC_API_KEY` was available in this build
-  environment. Everything around the network call (prompt construction,
-  forced-JSON-schema tool use, retry-on-invalid-output, the
-  `AnthropicError`-to-`AnalysisRun` error path) is implemented and unit-
-  tested with a fake provider standing in for the SDK; only the live call
-  itself is unverified. See HANDOFF.md §6 for exact steps to verify.
+- **RESOLVED in Phase 21** (previously listed here as unverified/blocked):
+  the real `AnthropicProvider` path has now been exercised end-to-end
+  multiple times against the live API (model `claude-sonnet-5`), including
+  spec §63 condition C (conflicting order between P12/P21 was correctly
+  surfaced as a `discussion_point` with `origin_category=conflict`,
+  attributed to both commanders) and condition E (an unlabelled positive
+  pattern — the SO handoff — was correctly surfaced as a `positive_finding`
+  attributed to all three involved commanders). Two real reliability bugs
+  were found in the process and fixed — see Phase 21 above.
+- **Still open:** the merge/dedup and conciseness prompt instructions
+  (Phase 21) have only been spot-verified on the one synthetic demo
+  incident, across a handful of real runs — not covered by an automated
+  regression test (that would require either a recorded API fixture or
+  accepting non-determinism in CI, neither done here). If duplication
+  reappears on a different incident, check `aar/analysis/findings.py` and
+  `aar/analysis/lessons.py`'s addenda first.
+- **UNVERIFIED (by design, needs real provider):** Stage 7 narrative
+  synthesis (`aar/analysis/narrative.py`, Phase 22) has only been exercised
+  against the mock provider so far, which — by design, see the module's
+  docstring — cannot actually produce a synthesised narrative, only an
+  honestly-labelled concatenated fallback. The user explicitly asked to
+  hold off on further real-API spend while iterating on the UI; run one
+  real analysis (`AAR_LLM_PROVIDER=anthropic`) to verify the actual prose
+  synthesis quality before considering this feature done.
 - **Technical debt, accepted for v1:** pipeline stages commit independently
   rather than the whole `run_analysis()` call being one transaction — a
   mid-run failure leaves earlier stages' results persisted rather than
