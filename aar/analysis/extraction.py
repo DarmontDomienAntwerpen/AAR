@@ -25,7 +25,12 @@ TAAK: Structurele extractie van één commandantenverslag.
 Je krijgt de secties van één commandantenverslag als JSON. Extraheer voor \
 elke relevante uitspraak een item met:
 - source_passage: de LETTERLIJKE brontekst (kopieer exact, verzin niets bij).
-- content: een genormaliseerde/geïnterpreteerde versie van diezelfde uitspraak.
+- content: een korte, telegramstijl herformulering van diezelfde uitspraak — \
+zie kernprincipe over beknoptheid en de vaste afkortingen (HD/LD/SAR/SO/V+nummer). \
+Bv. "ik zag rookontwikkeling maar niet veel" wordt "Lichte rook". Dit veld is \
+wat de facilitator scant om snel te weten wat er gebeurde; de volledige, \
+letterlijke uitspraak blijft altijd apart bewaard in source_passage — er gaat \
+dus niets verloren.
 - observation_type: op dit niveau (één enkele bron) gebruik je uitsluitend \
 "human_observation", "assumption" of "uncertainty" — nooit "fact" (dat is \
 voorbehouden voor geregistreerde dispatchgegevens), "conflict" (dat vereist \
@@ -38,7 +43,20 @@ went_less_well / why / other — kies wat het best past bij het type inhoud.
 noemt (letterlijk overnemen, bv. "rond 14:20"). Laat leeg als er geen \
 tijdstip vermeld wordt — verzin er nooit één bij.
 
-Sla lege secties gewoon over. Maak geen items van secties zonder inhoud.\
+Sla lege secties gewoon over. Maak geen items van secties zonder inhoud.
+
+BELANGRIJK voor de sectie "actions": die bevat per actie de velden Actie, \
+Doel, Resultaat en eventueel Toelichting, gescheiden door " | " op één \
+regel. Maak hier GEEN apart item per veld van — voeg elke actie samen tot \
+ÉÉN observatie per actie, met een kort maar samenhangend verhaaltje in \
+content (dit is de uitzondering op de telegramstijl uit regel 12): wat er \
+gebeurde, met welk doel, en wat het resultaat was — inclusief de reden bij \
+een gedeeltelijk of niet geslaagde actie. Bv. "Interne aanval via voordeur \
+ingezet om de brand snel te blussen — gedeeltelijk geslaagd, want de \
+controle van de achterzijde gebeurde later dan bedoeld." Gebruik category \
+"decision" als de actie een bewuste keuze beschrijft (bv. "besliste \
+om..."/"besloten..."), anders "action". source_passage blijft de volledige \
+originele regel (Actie: ... | Doel: ... | Resultaat: ... | Toelichting: ...).\
 """
 
 

@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from aar.analysis.extraction import run_extraction
 from aar.analysis.findings import run_findings
 from aar.analysis.lessons import run_lessons
+from aar.analysis.narrative import run_narrative
 from aar.analysis.reconstruction import run_reconstruction
 from aar.analysis.timeline import enrich_with_dispatch_times
 from aar.config.logging_setup import get_logger
@@ -65,6 +66,10 @@ def run_analysis(session: Session, incident: Incident, provider: LLMProvider) ->
         run.stage_reached = "lessons"
         session.commit()
         run_lessons(session, incident, provider)
+
+        run.stage_reached = "narrative"
+        session.commit()
+        run_narrative(session, incident, provider)
 
         run.stage_reached = "done"
         run.status = AnalysisRunStatus.SUCCESS

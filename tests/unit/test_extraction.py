@@ -35,8 +35,8 @@ def test_run_extraction_persists_observations(session, sample_incident):
         session,
         sample_incident,
         {
-            "observations": "Bij aankomst was er zware rookontwikkeling op de eerste verdieping.",
-            "doubts_assumptions": "Ik ging ervan uit dat de achterzijde al gecontroleerd was.",
+            "situation": "Bij aankomst was er zware rookontwikkeling op de eerste verdieping.",
+            "other": "Ik ging ervan uit dat de achterzijde al gecontroleerd was.",
         },
     )
     result = run_extraction(session, report, MockLLMProvider())
@@ -52,7 +52,7 @@ def test_run_extraction_persists_observations(session, sample_incident):
 
 
 def test_run_extraction_is_idempotent_on_rerun(session, sample_incident):
-    report = _make_report(session, sample_incident, {"observations": "Rook zichtbaar."})
+    report = _make_report(session, sample_incident, {"situation": "Rook zichtbaar."})
     run_extraction(session, report, MockLLMProvider())
     first_count = session.query(Observation).filter_by(commander_report_id=report.id).count()
 
@@ -63,6 +63,6 @@ def test_run_extraction_is_idempotent_on_rerun(session, sample_incident):
 
 
 def test_run_extraction_skips_empty_sections(session, sample_incident):
-    report = _make_report(session, sample_incident, {"observations": "", "narrative": "   "})
+    report = _make_report(session, sample_incident, {"situation": "", "actions": "   "})
     result = run_extraction(session, report, MockLLMProvider())
     assert result.items == []

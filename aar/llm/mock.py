@@ -21,6 +21,7 @@ from aar.schemas.constants import (
     ASSUMPTION_PHRASES,
     CATEGORY_LABELS_NL,
     CATEGORY_ORDER,
+    DECISION_MARKERS,
     INFORMATION_MISSING_MARKERS,
     UNCERTAINTY_PHRASES,
 )
@@ -69,6 +70,21 @@ def _attributed_quote(obs: dict) -> str:
     return obs["content"]
 
 
+def _evaluation_sentence_category(sentence: str) -> ObservationCategory:
+    """The template's 'evaluation' section deliberately bundles wat-ging-goed
+    / wat-kon-beter / waarom into one free-text box (spec: fewer, broader
+    topics for the commander to fill in) — a real LLM reads the prose and
+    tells these apart; the mock can only pattern-match the "Wat ging
+    goed:" / "Wat kon beter:" / "Waarom:" prefixes a commander is likely to
+    use, and falls back to WENT_WELL when no marker is present."""
+    lowered = sentence.lower()
+    if "kon beter" in lowered or "ging minder goed" in lowered:
+        return ObservationCategory.WENT_LESS_WELL
+    if lowered.startswith("waarom") or "waarom:" in lowered:
+        return ObservationCategory.WHY
+    return ObservationCategory.WENT_WELL
+
+
 def _classify_sentence(sentence: str) -> ObservationType:
     lowered = sentence.lower()
     if any(phrase in lowered for phrase in ASSUMPTION_PHRASES):
@@ -76,6 +92,88 @@ def _classify_sentence(sentence: str) -> ObservationType:
     if any(phrase in lowered for phrase in UNCERTAINTY_PHRASES):
         return ObservationType.UNCERTAINTY
     return ObservationType.HUMAN_OBSERVATION
+
+
+def _parse_action_line_fields(line: str) -> dict[str, str]:
+    """Splits one 'Actie: ... | Doel: ... | Resultaat: ... | Toelichting:
+    ...' line (see aar.ingestion.commander_docx._extract_actions_table)
+    back into its labelled fields."""
+    fields: dict[str, str] = {}
+    for part in line.split(" | "):
+        label, sep, value = part.partition(": ")
+        if sep:
+            fields[label.strip().lower()] = value.strip()
+    return fields
+
+
+def _extraction_items_for_actions(text: str) -> list[dict]:
+    """The 'actions' section comes from the Actie/Doel/Resultaat/Toelichting
+    table (structured rows), not free prose. Each row becomes ONE observation
+    — actie, doel, resultaat and toelichting joined into a single short,
+    readable mini-story, so it reads as one coherent thing that happened
+    instead of three disconnected fragments scattered across different
+    "Waarnemingen & acties" categories. A real LLM would write this as a
+    genuine sentence; the mock can only join the fields with light
+    punctuation — same structure, cruder prose (a documented, accepted mock
+    limitation, like its other simplifications). Falls back to the old
+    sentence-by-sentence heuristic for legacy free-text 'actions' content
+    (reports ingested before this table existed)."""
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    if not lines or not all(line.lower().startswith("actie:") for line in lines):
+        items = []
+        for sentence in _split_sentences(text):
+            category = (
+                ObservationCategory.DECISION
+                if any(marker in sentence.lower() for marker in DECISION_MARKERS)
+                else ObservationCategory.ACTION
+            )
+            time_match = _TIME_RE.search(sentence)
+            items.append(
+                {
+                    "content": sentence,
+                    "source_passage": sentence,
+                    "observation_type": _classify_sentence(sentence).value,
+                    "category": category.value,
+                    "reported_time_text": time_match.group(0) if time_match else None,
+                }
+            )
+        return items
+
+    items = []
+    for line in lines:
+        fields = _parse_action_line_fields(line)
+        actie = fields.get("actie", "")
+        if not actie:
+            continue
+        doel = fields.get("doel", "")
+        resultaat = fields.get("resultaat", "")
+        toelichting = fields.get("toelichting", "")
+
+        action_category = (
+            ObservationCategory.DECISION
+            if any(marker in actie.lower() for marker in DECISION_MARKERS)
+            else ObservationCategory.ACTION
+        )
+        content_parts = [actie.rstrip(".")]
+        if doel:
+            content_parts.append(f"doel: {doel.rstrip('.').lower()}")
+        if resultaat:
+            content_parts.append(f"resultaat: {resultaat.lower()}")
+        combined_content = ". ".join(content_parts) + "."
+        if toelichting:
+            combined_content += f" {toelichting}"
+
+        time_match = _TIME_RE.search(actie)
+        items.append(
+            {
+                "content": combined_content,
+                "source_passage": line,
+                "observation_type": _classify_sentence(actie).value,
+                "category": action_category.value,
+                "reported_time_text": time_match.group(0) if time_match else None,
+            }
+        )
+    return items
 
 
 class MockLLMProvider(LLMProvider):
@@ -99,6 +197,8 @@ class MockLLMProvider(LLMProvider):
             return json.dumps(self._findings(payload))
         if title == "LessonsOutput":
             return json.dumps(self._lessons(payload))
+        if title == "SituationNarrativeOutput":
+            return json.dumps(self._narrative(payload))
 
         logger.warning("MockLLMProvider has no rule set for schema %r; returning empty result.", title)
         return json.dumps({})
@@ -109,14 +209,19 @@ class MockLLMProvider(LLMProvider):
 
         items = []
         for section_key, text in (payload.get("sections") or {}).items():
+            if section_key == "actions":
+                items.extend(_extraction_items_for_actions(text))
+                continue
             category = SECTION_TO_CATEGORY.get(section_key, ObservationCategory.OTHER)
             for sentence in _split_sentences(text):
                 obs_type = _classify_sentence(sentence)
                 effective_category = category
-                if category == ObservationCategory.INFORMATION_AVAILABLE and any(
+                if category in (ObservationCategory.OBSERVATION, ObservationCategory.INFORMATION_AVAILABLE) and any(
                     marker in sentence.lower() for marker in INFORMATION_MISSING_MARKERS
                 ):
                     effective_category = ObservationCategory.INFORMATION_MISSING
+                if section_key == "evaluation":
+                    effective_category = _evaluation_sentence_category(sentence)
                 time_match = _TIME_RE.search(sentence)
                 items.append(
                     {
@@ -295,15 +400,20 @@ class MockLLMProvider(LLMProvider):
                 category = DiscussionOrigin.OTHER
             label = DISCUSSION_ORIGIN_LABELS_NL.get(category, category_value)
 
-            examples = "; ".join(dp["description"][:160] for dp in dps[:3])
-            if len(dps) > 3:
-                examples += f" (en {len(dps) - 3} vergelijkbare vaststelling(en))"
-
+            # The mock cannot actually synthesise what these dps have in
+            # common (that needs real language understanding) — say so
+            # honestly in one short sentence rather than faking a summary
+            # by pasting example descriptions together with semicolons.
             lesson_title = f"{label} ({len(dps)}x aangetroffen)"
+            description = (
+                f"Dit thema ({label.lower()}) kwam {len(dps)}x voor bij "
+                f"verschillende bevelvoerders. Zie de gekoppelde bespreekpunten "
+                f"hieronder voor de specifieke gevallen."
+            )
             lessons.append(
                 {
                     "title": lesson_title,
-                    "description": examples,
+                    "description": description,
                     "discussion_point_titles": [dp["title"] for dp in dps],
                 }
             )
@@ -318,3 +428,24 @@ class MockLLMProvider(LLMProvider):
                 }
             )
         return {"lessons": lessons, "improvements": improvements}
+
+    # -- Stage 7: situation narrative ---------------------------------------
+    def _narrative(self, payload: dict) -> dict:
+        """Honest, explicitly-labelled fallback: this mock has no semantic
+        understanding, so it cannot actually merge accounts into one
+        narrative (that needs a real LLM — see `aar/analysis/narrative.py`
+        module docstring). It joins the per-event, per-commander lines
+        instead of pretending to synthesise them."""
+        events = payload.get("events") or []
+        blocks: list[str] = []
+        for event in events:
+            lines = [
+                f"{p['commander_display_name']}: {p['perspective_text']}" if p.get("commander_display_name")
+                else p["perspective_text"]
+                for p in event.get("perspectives") or []
+                if p.get("perspective_text")
+            ]
+            if lines:
+                blocks.append(event.get("title", "") + " — " + " ".join(lines))
+        narrative = "\n\n".join(blocks) if blocks else "Geen incidentmomenten beschikbaar voor een situatieschets."
+        return {"narrative": narrative}

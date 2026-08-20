@@ -16,8 +16,8 @@ def test_mock_extraction_tags_assumption_and_uncertainty():
     payload = {
         "commander_report_id": 1,
         "sections": {
-            "observations": "Bij aankomst was er zware rookontwikkeling.",
-            "doubts_assumptions": (
+            "situation": "Bij aankomst was er zware rookontwikkeling.",
+            "other": (
                 "Ik ging ervan uit dat de achterzijde al gecontroleerd was. "
                 "Volgens mij was er niemand meer binnen."
             ),
@@ -37,7 +37,7 @@ def test_mock_extraction_tags_assumption_and_uncertainty():
 def test_mock_extraction_never_fabricates_time_not_in_text():
     payload = {
         "commander_report_id": 1,
-        "sections": {"narrative": "We gingen naar binnen en zochten de bovenverdieping."},
+        "sections": {"actions": "We gingen naar binnen en zochten de bovenverdieping."},
     }
     result = MockLLMProvider().generate_structured(
         system_prompt="sys", user_prompt=_prompt_with_payload(payload), response_model=ReportExtraction
@@ -48,7 +48,7 @@ def test_mock_extraction_never_fabricates_time_not_in_text():
 def test_mock_extraction_captures_time_mentioned_in_text():
     payload = {
         "commander_report_id": 1,
-        "sections": {"observations": "Rond 14:20 zagen we rook uit het dak komen."},
+        "sections": {"situation": "Rond 14:20 zagen we rook uit het dak komen."},
     }
     result = MockLLMProvider().generate_structured(
         system_prompt="sys", user_prompt=_prompt_with_payload(payload), response_model=ReportExtraction

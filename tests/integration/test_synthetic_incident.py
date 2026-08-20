@@ -113,12 +113,33 @@ def test_condition_b_uncertainty_detected_not_treated_as_fact(synthetic_run, ses
 
 # -- D: partially achieved objective -----------------------------------------
 def test_condition_d_partially_achieved_objective_recognised(synthetic_run, session, sample_incident):
+    """The template no longer asks for the overall doelbereik answer in the
+    report itself (spec: discussed live during the AAR instead) — so a fresh
+    parse correctly has no opinion on it, and the facilitator's own
+    "gedeeltelijk bereikt" assessment for P12 is preserved verbatim once
+    entered, not silently dropped or reinterpreted."""
+    from aar.services.aar_service import update_commander_identity
+
     p12 = (
         session.query(CommanderReport)
         .filter_by(incident_id=sample_incident.id, callsign="P12")
         .one()
     )
-    assert p12.objective_achieved == ObjectiveAchieved.GEDEELTELIJK
+    assert p12.objective_achieved is None
+
+    update_commander_identity(
+        session,
+        p12,
+        callsign=p12.callsign,
+        unit_name=p12.unit_name,
+        rank=p12.rank,
+        surname=p12.surname,
+        objective_achieved=ObjectiveAchieved.GEDEELTELIJK,
+        objective_achieved_explanation="Doel gedeeltelijk bereikt.",
+    )
+
+    reloaded = session.query(CommanderReport).filter_by(id=p12.id).one()
+    assert reloaded.objective_achieved == ObjectiveAchieved.GEDEELTELIJK
 
 
 # -- F: hidden pattern across reports -----------------------------------------
@@ -155,9 +176,17 @@ def test_condition_h_untimed_events_have_no_fabricated_time(synthetic_run, sessi
 
 
 # -- I: later-known information is not backdated onto an earlier decision ----
-def test_condition_i_decision_ordered_before_result_no_hindsight_backdating(
+def test_condition_i_decision_carries_its_result_without_hindsight_wording(
     synthetic_run, session, sample_incident
 ):
+    """The actions table fuses a decision and its outcome into one
+    observation (spec: one coherent mini-story per action, not scattered
+    fragments) — so there's no longer a separate, independently-ordered
+    RESULT event to compare a DECISION event against; they're the same
+    event now. What must still hold: the decision's own reasoning is
+    presented as it stood at the time, with the result attached as an
+    outcome — not as if it were already known when the decision was made
+    (no "achteraf bleek" / "wist toen al" framing)."""
     from aar.schemas.constants import CATEGORY_LABELS_NL
 
     decision_event = (
@@ -165,13 +194,16 @@ def test_condition_i_decision_ordered_before_result_no_hindsight_backdating(
         .filter_by(incident_id=sample_incident.id, title=CATEGORY_LABELS_NL[ObservationCategory.DECISION])
         .one_or_none()
     )
-    result_event = (
-        session.query(IncidentEvent)
-        .filter_by(incident_id=sample_incident.id, title=CATEGORY_LABELS_NL[ObservationCategory.RESULT])
-        .one_or_none()
+    assert decision_event is not None
+
+    decision_obs = (
+        session.query(Observation)
+        .filter_by(incident_id=sample_incident.id, category=ObservationCategory.DECISION)
+        .all()
     )
-    assert decision_event is not None and result_event is not None
-    assert decision_event.order_index < result_event.order_index
+    assert any("resultaat:" in obs.content.lower() for obs in decision_obs)
+    for hindsight_phrase in ("achteraf bleek", "wist toen al", "zoals later bleek"):
+        assert all(hindsight_phrase not in obs.content.lower() for obs in decision_obs)
 
 
 # -- J: reasonable decision with imperfect outcome — no injected judgment ----
@@ -190,7 +222,14 @@ def test_condition_j_decision_content_preserved_without_injected_judgement(
     )
     assert len(decision_obs) >= 1
     for obs in decision_obs:
-        assert obs.content == obs.source_passage  # verbatim, nothing rewritten in hindsight
+        # The combined actie/doel/resultaat mini-story is a deliberate
+        # synthesis (spec: one coherent item per action, not three
+        # disconnected fragments) — so content legitimately differs from
+        # source_passage now. What must still hold: source_passage keeps the
+        # full, untouched original "Actie: ... | Doel: ... | Resultaat: ..."
+        # line (traceability preserved), and no hindsight judgement is
+        # injected into the synthesis.
+        assert obs.source_passage.lower().startswith("actie:")
         for judgemental_word in ("fout", "verkeerd", "had moeten weten"):
             assert judgemental_word not in obs.content.lower()
 
