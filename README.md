@@ -9,8 +9,6 @@
 ![Tests](https://img.shields.io/badge/tests-142_passing-brightgreen)
 
 > **In short:** after a major fire, each commander writes their own report. A good After Action Review (AAR) compares all of them, but in practice that is done by hand, if at all. This tool reads all the reports, rebuilds one shared timeline, and proposes discussion points, lessons and improvements. Every point links back to the exact sentence it came from. A human facilitator stays in control and has the final word.
->
-> Built for and piloted at a Belgian fire brigade zone, and used on real incidents.
 
 ![Interactive AAR overview (synthetic demo incident)](docs/images/overview.png)
 
@@ -146,7 +144,7 @@ More documentation:
 - [PROJECT_STATE.md](PROJECT_STATE.md): design decisions and full change history
 
 ## Status & next steps
-In active pilot use on real incidents. Currently a single-team tool (one shared login, one SQLite database). Before a wider rollout, the next steps are multi-user accounts, PostgreSQL and automated backups.
+Working end to end. Currently a single-team tool (one shared login, one SQLite database). Before a wider rollout, the next steps are multi-user accounts, PostgreSQL and automated backups.
 
 ## Author
 **Domien Darmont**, AI Engineer, Antwerp, Belgium
