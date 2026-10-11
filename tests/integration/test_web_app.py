@@ -16,6 +16,7 @@ from fixtures.synthetic_incident.build_fixture import build_commander_reports, b
 @pytest.fixture()
 def client(tmp_path, monkeypatch):
     monkeypatch.setenv("AAR_DB_PATH", str(tmp_path / "web_test.db"))
+    monkeypatch.setenv("AAR_PROJECT_ROOT", str(tmp_path))
     monkeypatch.setenv("AAR_LLM_PROVIDER", "mock")
 
     from aar.config.settings import get_settings
@@ -208,3 +209,56 @@ def test_unsupported_photo_extension_rejected(client: TestClient, tmp_path):
 def test_nonexistent_incident_returns_404(client: TestClient):
     resp = client.get("/incidents/999999/sources")
     assert resp.status_code == 404
+
+
+def test_no_password_configured_skips_login_gate(client: TestClient):
+    # AAR_ACCESS_PASSWORD unset in this fixture — the app must stay directly
+    # reachable, matching every other test in this file.
+    resp = client.get("/", follow_redirects=False)
+    assert resp.status_code == 200
+
+
+@pytest.fixture()
+def password_protected_client(tmp_path, monkeypatch):
+    monkeypatch.setenv("AAR_DB_PATH", str(tmp_path / "auth_test.db"))
+    monkeypatch.setenv("AAR_PROJECT_ROOT", str(tmp_path))
+    monkeypatch.setenv("AAR_LLM_PROVIDER", "mock")
+    monkeypatch.setenv("AAR_ACCESS_PASSWORD", "geheim123")
+
+    from aar.config.settings import get_settings
+
+    get_settings.cache_clear()
+    import aar.db.session as db_session_module
+
+    db_session_module._engine = None
+
+    from aar.web.app import create_app
+
+    app = create_app()
+    with TestClient(app) as c:
+        yield c
+
+    get_settings.cache_clear()
+    db_session_module._engine = None
+
+
+def test_password_configured_redirects_to_login(password_protected_client: TestClient):
+    resp = password_protected_client.get("/", follow_redirects=False)
+    assert resp.status_code == 303
+    assert resp.headers["location"].startswith("/login")
+
+
+def test_wrong_password_rejected(password_protected_client: TestClient):
+    resp = password_protected_client.post("/login", data={"password": "verkeerd", "next": "/"})
+    assert resp.status_code == 401
+
+
+def test_correct_password_grants_access(password_protected_client: TestClient):
+    resp = password_protected_client.post(
+        "/login", data={"password": "geheim123", "next": "/"}, follow_redirects=False
+    )
+    assert resp.status_code == 303
+    assert resp.headers["location"] == "/"
+
+    resp = password_protected_client.get("/", follow_redirects=False)
+    assert resp.status_code == 200

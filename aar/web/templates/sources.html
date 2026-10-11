@@ -4,22 +4,38 @@
 {% block title %}Bronnen{% endblock %}
 {% block content %}
 
-{{ c.page_header("Bronnen", "Upload de commandantenverslagen (.docx), het dispatchbestand (.xlsx), en eventuele foto's of plannen.") }}
+{{ c.page_header("Bronnen", "Upload de bevelvoerdersverslagen (.docx), het dispatchbestand (.xlsx), en eventuele foto's of plannen.") }}
 
-<div class="mb-6 rounded-[13px] border border-slate-200 border-l-[3px] border-l-accent-600 bg-white shadow-card p-5">
+<div class="mb-6 rounded-[13px] border border-slate-200 border-l-[3px] border-l-rose-500 bg-white shadow-card p-5">
   <div class="flex items-start gap-3">
-    <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent-100 text-accent-700">
+    <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-100 text-rose-700">
       {{ icons.icon('phone', 'w-4 h-4') }}
     </span>
     <div class="flex-1 min-w-0">
-      <h2 class="font-semibold text-slate-900 mb-1">Initiële oproep</h2>
-      <p class="text-xs text-slate-500 mb-3">Wat kregen we mee bij de eerste melding? Ook aanpasbaar in het Overzicht-blad van de AAR; wordt daar vooraan bij de situatieschets getoond.</p>
-      <form method="post" action="/incidents/{{ incident.id }}/aar/initial-call-notes">
+      <div class="flex items-center justify-between mb-1">
+        <h2 class="font-semibold text-slate-900">Initiële oproep</h2>
+        {% if incident.initial_call_notes %}
+        <button type="button" onclick="toggleInlineEdit('call-notes')" class="text-slate-300 hover:text-accent-600 transition">
+          {{ icons.icon('pencil', 'w-3.5 h-3.5') }}
+        </button>
+        {% endif %}
+      </div>
+      <p class="text-xs text-slate-500 mb-3">Wat kregen we mee bij de eerste melding? Wordt vooraan bij de situatieschets in het Overzicht-blad getoond. Wordt automatisch netjes gezet door AI bij het opslaan.</p>
+
+      {% if incident.initial_call_notes %}
+      <p id="call-notes-view" class="text-sm text-slate-700 leading-relaxed">{{ incident.initial_call_notes }}</p>
+      {% endif %}
+
+      <form id="call-notes-edit" method="post" action="/incidents/{{ incident.id }}/aar/initial-call-notes"
+            class="{{ 'hidden mt-2' if incident.initial_call_notes }}">
+        <input type="hidden" name="redirect_to" value="/incidents/{{ incident.id }}/sources">
         <textarea name="text" rows="2" placeholder="bv. Melding van rookontwikkeling in woning, mogelijk bewoner aanwezig..."
                   class="w-full rounded-md border border-slate-300 px-3 py-2.5 text-sm leading-relaxed focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500">{{ incident.initial_call_notes }}</textarea>
-        <button type="submit" class="mt-3 rounded-md border border-slate-300 px-3.5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition">
-          Oproepgegevens opslaan
-        </button>
+        <div class="mt-3 flex items-center gap-3">
+          <button type="submit" class="rounded-md border border-slate-300 px-3.5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition">
+            Oproepgegevens opslaan
+          </button>
+        </div>
       </form>
     </div>
   </div>
@@ -169,7 +185,7 @@
 
 <div class="mt-8 flex items-center justify-between rounded-[13px] border border-slate-200 bg-white shadow-card px-6 py-5">
   {% if not reports %}
-  <p class="text-sm text-slate-500">Voeg minstens één commandantenverslag toe om de analyse te starten.</p>
+  <p class="text-sm text-slate-500">Voeg minstens één bevelvoerdersverslag toe om de analyse te starten.</p>
   {% else %}
   <p class="text-sm text-slate-500">{{ reports|length }} verslag(en) klaar voor analyse.</p>
   <a href="/incidents/{{ incident.id }}/analysis"
@@ -178,5 +194,14 @@
   </a>
   {% endif %}
 </div>
+
+<script>
+  function toggleInlineEdit(id) {
+    var view = document.getElementById(id + '-view');
+    var form = document.getElementById(id + '-edit');
+    if (view) { view.classList.toggle('hidden'); }
+    if (form) { form.classList.toggle('hidden'); }
+  }
+</script>
 
 {% endblock %}

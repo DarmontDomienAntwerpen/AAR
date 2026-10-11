@@ -19,6 +19,7 @@ def test_extracted_item_valid():
     item = ExtractedItem(
         content="Commander assumed the rear was checked",
         source_passage="Ik ging ervan uit dat de achterzijde gecontroleerd was",
+        source_section="situation",
         observation_type=ObservationType.ASSUMPTION,
     )
     assert item.observation_type == ObservationType.ASSUMPTION
@@ -31,6 +32,7 @@ def test_report_extraction_roundtrip():
             ExtractedItem(
                 content="Heavy smoke on arrival",
                 source_passage="Bij aankomst zware rookontwikkeling",
+                source_section="situation",
                 observation_type=ObservationType.HUMAN_OBSERVATION,
             )
         ],

@@ -1,12 +1,26 @@
 # PROJECT_STATE.md — Fire Service AAR Tool v1
 
 Living engineering source of truth. Read before starting a phase; update after
-completing or materially changing one. Last updated: 2026-08-15 — **all
+completing or materially changing one. Last updated: 2026-08-20 — **all
 phases (0-13) complete, Definition of Done satisfied** (see §11 for the
-checklist and the two explicitly-documented UNVERIFIED items), **plus two
-post-handoff changes made at the user's explicit request: a full UI rewrite
-from Streamlit to FastAPI+Jinja2+Tailwind (Phase 14), and a photo/plan
-attachment feature (Phase 15).** See §7 and §8 for details.
+checklist), **plus 11 post-handoff phases (14-24) made at the user's
+explicit request**: full UI rewrite to FastAPI+Jinja2+Tailwind, photo/plan
+attachments, a Google Form/Sheet intake path alongside the DOCX one, a
+dedicated situation-narrative synthesis stage, reliability hardening driven
+by real-provider usage (Phase 23), and — the largest single phase, 24 — a
+full day of live-testing-driven iteration: photo-per-bevelvoerder linking
+(full CRUD, everywhere), a facilitator-controlled AAR finalize/reopen
+write-lock, a new Werkpunten tab with manual add/edit/delete, an
+incident-type colour system used consistently across the whole app, a
+visual modernisation pass on the sidebar and the Overzicht/Definitieve AAR
+screens, and several more real-provider reliability fixes (extraction item
+ordering, reconstruction's ambiguous-conflict resolution, lesson
+singleton-deduplication). Two more real, previously-undetected bugs were
+found and fixed in Phase 24: a SQLite id-reuse + browser-caching bug that
+could show the wrong photo after a delete+re-upload, and a reconstruction
+ordering algorithm that could oscillate and land on an arbitrary (not just
+wrong, *unpredictable*) event order depending on iteration count. See §7,
+§8, and §9 for details.
 
 ---
 
@@ -72,10 +86,13 @@ AAR/
 │   ├── db/                    # SQLAlchemy engine/session, init
 │   ├── models/                # SQLAlchemy ORM models
 │   ├── schemas/                # Pydantic schemas (boundary contracts)
-│   ├── ingestion/              # commander_docx.py, dispatch_excel.py
+│   ├── ingestion/              # commander_docx.py, commander_sheet.py (Google Form/
+│   │                           # Sheet export, Phase 23), dispatch_excel.py
 │   ├── llm/                    # base.py, mock.py, provider_anthropic.py, prompts/
-│   ├── analysis/               # extraction, normalisation, reconstruction,
-│   │                           # timeline, findings, lessons, pipeline orchestrator
+│   ├── analysis/               # extraction, reconstruction, timeline, findings,
+│   │                           # lessons, narrative (Phase 22), cleanup (Phase 23,
+│   │                           # on-demand text proofreading, not a pipeline stage),
+│   │                           # pipeline orchestrator
 │   ├── services/                # incident/report/dispatch/media/analysis/aar services
 │   ├── ui/                      # labels.py only — Dutch enum display labels,
 │   │                             shared by the web templates (Streamlit pages removed
@@ -92,15 +109,20 @@ AAR/
 
 `Incident(1) -- (N) SourceDocument -- (0..1) CommanderReport` (SourceDocument
 also covers dispatch XLSX and, since Phase 15, `PHOTO_OR_PLAN` reference
-files — the latter carry a `caption` and an optional `event_id` FK so a
-photo can be pinned to a specific `IncidentEvent`; photos are never parsed
-or fed to the AI pipeline)
+files — the latter carry a `caption`, an optional `event_id` FK so a photo
+can be pinned to a specific `IncidentEvent`, and, since Phase 24, an
+optional `linked_commander_report_id` FK so a photo can *also* be pinned to
+a specific bevelvoerder — independently; a photo can have neither, either,
+or both links. Photos are never parsed or fed to the AI pipeline.
+`source_documents.id` uses `AUTOINCREMENT` since Phase 24 specifically so a
+deleted photo's id is never reused — see Phase 24 for why that mattered.)
 `Incident(1) -- (N) DispatchRecord`
-`Incident(1) -- (N) Observation` (each tagged FACT/HUMAN_OBSERVATION/ASSUMPTION/UNCERTAINTY/CONFLICT/AI_OBSERVATION, linked to source report + source passage)
+`Incident(1) -- (N) Observation` (each tagged FACT/HUMAN_OBSERVATION/ASSUMPTION/UNCERTAINTY/CONFLICT/AI_OBSERVATION, linked to source report + source passage; also carries `category` — semantic classification — and, since Phase 23, `source_section` — the literal form section it came from, e.g. "actions"/"went_well"; these are deliberately independent, see Phase 23)
 `Incident(1) -- (N) IncidentEvent` (chronological moment) `-- (N) EventPerspective` (per-commander view of that moment, linked to Observations)
 `Incident(1) -- (N) DiscussionPoint / PositiveFinding / Lesson / Improvement` (each with evidence links to Observations/Events)
 `Incident(1) -- (N) HumanCorrection` (facilitator edits, fed back into re-analysis as authoritative context)
 `Incident(1) -- (N) AnalysisRun` (bookkeeping: when the pipeline ran, on top of which corrections)
+`Incident.ai_situation_narrative` (Phase 22, AI-synthesised prose) and `Incident.initial_call_notes` / `CommanderReport.facilitator_notes` (Phase 23, always facilitator-authored, never touched by automatic (re-)analysis — only by the explicit "AI opschonen" proofreading action, on request)
 
 JSON columns used only for: source-passage evidence lists, and free-form
 LLM-extracted sub-structures that don't need independent querying. All
@@ -109,30 +131,47 @@ report id, event ordering) are explicit columns.
 
 ## 6. AI Pipeline Stages (implemented in `aar/analysis/`)
 
-1. **Extraction** (`extraction.py`) — per report, LLM extracts structured
-   `ReportExtraction` Pydantic model (observations, information available/
-   missing, assessment, decision, objective, actions, result, went well/less
-   well, why, assumptions/uncertainties, other) with source passage for each
-   item. Runs independently per report.
-2. **Normalisation** (`normalisation.py`) — deterministic: converts each
-   extraction item into an `Observation` DB row with its semantic type,
-   without discarding original wording.
-3. **Reconstruction** (`reconstruction.py`) — LLM groups observations across
-   reports into candidate `IncidentEvent`s with relative order; never invents
-   timestamps.
-4. **Dispatch enrichment** (`timeline.py`) — deterministic: attaches a
+1. **Extraction** (`extraction.py`) — per report, LLM extracts a structured
+   `ReportExtraction` (observations, information available/missing,
+   assessment, decision, objective, actions, result, went well/less well,
+   why, assumptions/uncertainties, other), each item carrying its
+   `source_passage`, `source_section` (literal form section, Phase 23) and
+   `category` (semantic classification). Persists straight to `Observation`
+   rows in this same stage — deterministic normalisation was folded in here
+   early on, there's no separate stage/module for it. Runs independently
+   per report, skipped on re-analysis if the report already parsed.
+2. **Reconstruction** (`reconstruction.py`) — LLM groups observations across
+   reports into candidate `IncidentEvent`s with relative order; never
+   invents timestamps. Since Phase 23, followed by a deterministic
+   `_enforce_per_commander_order()` pass that corrects the LLM's ordering
+   when it doesn't preserve each commander's own action sequence (a real,
+   recurring real-provider gap — see Phase 23).
+3. **Dispatch enrichment** (`timeline.py`) — deterministic: attaches a
    dispatch timestamp to an event only when a dispatch record clearly
    corresponds; keeps provenance; leaves everything else unset.
-5. **Findings** (`findings.py`) — LLM proposes DiscussionPoints,
-   PositiveFindings, AI_OBSERVATION-type Observations, per event and overall.
-6. **Lessons** (`lessons.py`) — LLM proposes Lessons/Improvements from the
+4. **Findings** (`findings.py`) — LLM proposes DiscussionPoints,
+   PositiveFindings, AI_OBSERVATION-type Observations, per event and
+   overall. Since Phase 23, followed by a deterministic fallback pass that
+   catches any ASSUMPTION/UNCERTAINTY observation the LLM's own output
+   didn't reference and adds a minimal DiscussionPoint for it.
+5. **Lessons** (`lessons.py`) — LLM proposes Lessons/Improvements from the
    accumulated findings.
+6. **Narrative synthesis** (`narrative.py`, Phase 22) — LLM writes a short
+   (3-paragraph, waarnemingen → acties → resultaten) prose situation
+   overview from the crucial-category events, into
+   `Incident.ai_situation_narrative`. The only stage the mock provider
+   cannot meaningfully approximate (see the module docstring).
 
 Orchestrated by `aar/analysis/pipeline.py::run_analysis(incident_id, provider)`.
-Human corrections (Stage 9 / spec §49) are re-injected as an explicit
-"eerdere correcties door de facilitator" context block and the pipeline is
-re-run from Stage 3 onward (extraction stays cached since raw reports didn't
-change).
+Human corrections (spec §49) are re-injected as an explicit "eerdere
+correcties door de facilitator" context block and the pipeline is re-run
+from the reconstruction stage onward (extraction stays cached since raw
+reports didn't change).
+
+Separately, `aar/analysis/cleanup.py` (Phase 23) is an on-demand utility
+call — not a pipeline stage, not run by `run_analysis()` — that proofreads
+a short facilitator-typed field (incident description, initial-call notes)
+on explicit request only.
 
 ## 7. Implementation Phases & Status
 
@@ -154,6 +193,14 @@ change).
 | 13 | Handoff | DONE |
 | 14 | *(post-handoff)* UI rewrite: Streamlit → FastAPI + Jinja2 + Tailwind | DONE |
 | 15 | *(post-handoff)* Photo/plan attachments | DONE |
+| 16-17 | *(post-handoff)* Professional design overhaul; content/attribution/timeline fixes | DONE |
+| 18 | *(post-handoff)* Attributed narrative voice; lesson clustering; commander overview redesign | DONE |
+| 19 | *(post-handoff)* Final AAR narrative fix; situation summary scoped to decision-relevant moments | DONE |
+| 20 | *(post-handoff)* Commander cards colour-coded by objective status | DONE |
+| 21 | *(post-handoff)* First real-provider run; category-match + merge/dedup reliability fixes | DONE |
+| 22 | *(post-handoff)* Dedicated situation-narrative synthesis stage; free-form report fallback | DONE |
+| 23 | *(post-handoff)* Google Form/Sheet intake; real-provider reliability hardening (reconstruction ordering, findings fallback, narrative false-contradiction fix); facilitator-workflow UI restructuring; login-gate + test-isolation bugs found & fixed | DONE |
+| 24 | *(post-handoff)* Photo-per-bevelvoerder linking (full CRUD); AAR finalize/reopen write-lock; Werkpunten tab; incident-type colour system; sidebar/Overzicht/Definitieve-AAR visual modernisation; further real-provider reliability fixes (extraction ordering, reconstruction conflict resolution, lesson dedup); SQLite id-reuse+caching bug found & fixed | DONE |
 
 ## 8. Completed Work
 
@@ -863,6 +910,395 @@ change).
   here unless it resurfaces.
   115/115 tests passing (1 documented skip, unrelated).
 
+- **Phase 23 (post-handoff, user-requested): Google Form as a second intake
+  path, reliability hardening after real-provider use exposed several
+  prompt-compliance gaps, and a significant facilitator-workflow UI pass.**
+  The single biggest theme this phase: once the user ran real incidents
+  through the real provider (`AAR_LLM_PROVIDER=anthropic`) instead of just
+  the synthetic fixture, several "the AI mostly follows this instruction"
+  gaps became visible on real data. Where a gap was about a *hard,
+  checkable* invariant, the fix was moved into deterministic code instead of
+  a stronger prompt — the pattern that recurs throughout this phase.
+
+  **Google Form / Sheet ingestion (`aar/ingestion/commander_sheet.py`,
+  new)** — an alternative to one-`.docx`-per-commander: a facilitator can
+  send colleagues a Google Form instead, and upload the whole
+  Google-Sheets response export (`.xlsx`) as one file that expands into
+  multiple `CommanderReport` rows, one per submission. Column matching is
+  by normalised header *prefix*, not exact text, so real-world Form wording
+  drift doesn't break it; the action-field regex matches on "starts with
+  the field keyword, first number after that is the slot", not "ends with
+  the number", after a real form's long auto-generated Toelichting question
+  title broke the original "ends with" assumption. `CommanderReport
+  .source_document_id` stayed 1:1 with `SourceDocument` (not relaxed) — each
+  row gets its own synthetic `SourceDocument` with a composite content hash
+  (`sha256(file_hash:row_index)`) so re-uploading the same sheet is still
+  correctly detected as a duplicate.
+
+  **Commander DOCX template simplified further.** "C. Acties" changed from
+  a table to repeating labelled paragraph blocks (unlimited reflow per
+  field); the "Is het doel bereikt?" table dropped entirely (discussed live
+  during the AAR instead — see also the objective_achieved removal below).
+  Bigger change: **Resultaat is now free text**, not a forced
+  Geslaagd/Gedeeltelijk/Niet-geslaagd pick — the user pointed out that
+  constraining an already-descriptive result field was redundant. Removed
+  `ACTION_OUTCOME_OPTIONS` and its validation/matching entirely from both
+  the DOCX and Sheet parsers.
+
+  **Per-action narrative synthesis + form-order fidelity, hardened at the
+  code level after prompt-only attempts proved unreliable run-to-run:**
+  - Extraction now fuses one action's Actie/Doel/Resultaat/Toelichting into
+    ONE observation with a short coherent mini-story (`aar/analysis
+    /extraction.py`, `aar/llm/mock.py::_extraction_items_for_actions`)
+    instead of three disconnected telegram-style fragments — the user's
+    explicit ask: "actie 2 was..., doel was..., resultaat was...".
+  - **The order a commander lists their own actions in (Actie 1, 2, 3...)
+    is the real chronological order — but the real LLM reconstruction stage
+    did not reliably preserve it**, even after several rounds of
+    increasingly explicit prompt instructions (including a worked example
+    naming this exact failure mode). Fixed for good with a deterministic
+    post-processing pass in `aar/analysis/reconstruction.py`:
+    `_observation_positions()` records each observation's true position
+    within its own commander's sequence (extraction/DB-id order, which is
+    form order); `_enforce_per_commander_order()` stable-swaps adjacent
+    reconstructed events until no event contains a later action from some
+    commander immediately preceding an event with an earlier action from
+    that same commander — regardless of what `order_hint` the LLM assigned.
+    Covered by 3 new unit tests (`tests/unit/test_reconstruction.py`).
+  - `Observation.source_section` (new nullable column) — set at extraction
+    time to the literal form-section key an item came from (situation/
+    actions/went_well/went_less_well/other/difficulties), independent of
+    the LLM's semantic `category`. Root cause fixed: "Waarnemingen & acties"
+    used to group by semantic category (`CATEGORY_SUPERGROUP`), so a
+    sentence from "Overige opmerkingen" that read like an assessment could
+    get pulled into the Acties box — confusing when the user's ask was
+    "topics moeten dezelfde zijn als in de form". Topics now mirror the
+    form's own 5 sections exactly; `CATEGORY_TO_SECTION_FALLBACK` covers
+    observations from before this column existed. `ExtractedItem
+    .source_section` is a `Literal[...]` field the LLM must fill in
+    alongside `category`, not a derived value.
+  - **Reconciled a genuine schema-quirk under real API load**: Anthropic's
+    forced tool-use occasionally serialised `ReconstructionOutput.events` as
+    a JSON *string* instead of a real array, failing validation even on
+    retry. Fixed generically in `aar/llm/base.py::_repair_double_encoded_json`
+    — recursively un-stringifies any string value that itself parses as
+    JSON, applied to every provider's output before Pydantic validation, so
+    this class of glitch doesn't cost a call/attempt anywhere in the
+    pipeline, not just reconstruction.
+  - **Findings fallback safety net** (`aar/analysis/findings.py`): the
+    addendum already said "an assumption/uncertainty observation IS by
+    definition a discussion point, returning an empty list when such
+    observations exist is a bug" — but the real LLM sometimes did exactly
+    that (0 discussion points on a run with clearly-flagged assumptions).
+    After `run_findings` processes the LLM's own discussion_points, it now
+    finds any ASSUMPTION/UNCERTAINTY observation not referenced by any of
+    them and adds a minimal fallback `DiscussionPoint` for it deterministically
+    — same "don't rely purely on prompt compliance for a hard guarantee"
+    pattern as the reconstruction fix. Covered by a new unit test using a
+    stub provider that deliberately returns nothing.
+  - **Situation-narrative false-"contradiction" fix**: the AI narrative
+    flagged two commanders searching *different rooms* with different
+    (non-contradictory) results as "de bronnen spreken elkaar tegen".
+    Addendum (`aar/analysis/narrative.py`) now explicitly distinguishes a
+    real contradiction (same place/moment, incompatible claims) from two
+    compatible facts about different scopes, with a worked counter-example.
+  - Narrative addendum also tightened per user feedback: exactly 3
+    paragraphs in a fixed order (waarnemingen → acties → resultaten, no
+    evaluative wat-ging-goed content — that has its own tab now), callsigns
+    used explicitly for every actor instead of "de ploeg", and resource/
+    personnel-scale details (e.g. "met de hele ploeg", "wegens de lange
+    afstand") never trimmed away even when shortening the rest.
+  - `CRUCIAL_SUMMARY_CATEGORIES` narrowed to the pure factual arc
+    (observation/action/decision/result/objective) — went_well/
+    went_less_well dropped, since those belong on their own tabs, not
+    blended into "what happened".
+
+  **`objective_achieved` ("doel behaald") removed end-to-end** — the user
+  concluded it was never actually used in practice (always either stale
+  demo data or left unset) and asked to scrap it entirely: gone from
+  `update_commander_identity`'s signature, every template badge/border/
+  form field, `templating.py`'s color-class globals. The DB column itself
+  was left in place (no migration framework — see the Phase 22 note on
+  `ALTER TABLE`), just unused.
+
+  **Unit-name/callsign alias table** (`UNIT_NAME_ALIASES`/`CALLSIGN_ALIASES`
+  in `aar/schemas/constants.py`) grew from real zone naming: "1H PLO",
+  "1H PC", "1H PN", "1H PZ", "1H PLI", "1H PW", "1H PBE", "1H PD", "COM 1",
+  "COM 2", each with several real-world spelling variants (with/without
+  space, full name spelled out, "1ste"/"eerste"). Matched on whitespace-
+  collapsed lowercase text; unrecognised values pass through unchanged.
+
+  **Facilitation UI restructuring**, mostly driven by "this reads like a
+  wirwar of text, not an overview":
+  - New "Verslagen" card-grid tab (all commanders side by side) was tried,
+    then removed once the source_section fix made it functionally identical
+    to "Waarnemingen & acties" — the user correctly called this out as
+    duplicate surface area.
+  - New "Extra opmerkingen" tab: the raw "other"-section text per
+    commander, roster order, no AI judgement involved (unlike
+    discussion_points/positive_findings, which only exist for what the AI
+    flagged) — a direct pull-through of that one form question.
+  - "Positieve punten" and "Te bespreken" now group by the one commander
+    each item traces back to via `observation_ids` (`_group_findings_by_commander`
+    in `interactive_aar.py`), chronological within each group; items
+    genuinely attributed to >1 commander (deliberately merged, not
+    duplicated, per the findings addendum) land in a trailing "Gedeeld
+    tussen bevelvoerders" group. Card source-attribution simplified from a
+    "Bewijs bekijken" full-quote toggle to a small "Bron: <callsign>" chip
+    (`c.attributed_to`, already existed, just not used here before).
+    "Positieve punten" cards also lost their inline edit form entirely
+    (read-only bullet text, matching "Waarnemingen & acties" — the edit
+    form was judged redundant surface area, same reasoning as the two
+    points below).
+  - "Incidentverloop" redesigned from a bordered-card list into a flowing
+    timeline (accent dot + connecting line, no per-event box) with the
+    editable `ai_summary` textarea removed (duplicate of what "Bron"
+    /perspectives already showed) and the "Correctie toevoegen" mini-form
+    removed (a correction only takes effect on the next full re-analysis,
+    not immediately — judged too indirect/costly for what it's worth); the
+    underlying `HumanCorrection` mechanism and its route are untouched,
+    only this one UI entry point is gone.
+  - "Waarnemingen & acties" gained a compare view: a checkbox per
+    commander + a "Tonen" button reveals a side-by-side multi-column view
+    (`#compare-panel`, vanilla JS, no new route) of just the selected
+    commanders' topic boxes, reusing a new `topic_blocks()` Jinja macro
+    shared with the existing per-commander overlay.
+  - "Roepnummer" relabelled to "Callsign" everywhere; "commandant(en)"
+    relabelled to "bevelvoerder(s)" everywhere (UI strings, LLM prompt
+    text, flash messages, the downloadable template's filename) — Python
+    identifiers (`CommanderReport`, `commander_report_id`, etc.) deliberately
+    left alone, that's internal naming, not user-facing text.
+  - New on-demand "AI opschonen" action for the incident description and
+    initial-call notes (`aar/analysis/cleanup.py`, `TextCleanupOutput`) —
+    typo/structure cleanup only, explicitly never automatic (these fields
+    stay facilitator-authored, matching their existing "never touched by
+    (re-)analysis" contract) — triggered by its own button, mock provider
+    returns the text unchanged (honest no-op, same pattern as narrative's
+    mock fallback).
+  - Delete-incident feature added (archive row trash icon → confirmation),
+    cascading through the fully-configured relationship cascades plus a
+    `shutil.rmtree` of the incident's upload directory. The confirmation
+    was a simple `confirm()` dialog at first; after the user accidentally
+    deleted two real incidents in a row while testing it, hardened to
+    require typing the incident's exact location name in a `prompt()`
+    before the delete form submits.
+
+  **Two real, previously-undetected bugs found while investigating the
+  data loss above and while auditing the repo for deploy-readiness:**
+  - `tests/integration/test_web_app.py`'s `client` fixture isolated the
+    *database* (`AAR_DB_PATH`) but not file writes — `report_service.py`'s
+    `_uploads_dir()` reads `get_settings().project_root`, which the fixture
+    never overrode, so "isolated" web tests were silently writing real
+    fixture files into the real `data/uploads/` directory, keyed by
+    whatever incident id their own throwaway DB happened to assign (which
+    collided with real incident ids). Fixed generically: `get_settings()`
+    now reads an optional `AAR_PROJECT_ROOT` env override (defaults to the
+    real path unchanged), and the test fixture sets it alongside
+    `AAR_DB_PATH`. Same root cause, separately, made
+    `tests/integration/test_analysis_service.py::test_trigger_analysis_uses_default_mock_provider`
+    silently hit the *real* Anthropic API on every test run once `.env` had
+    `AAR_LLM_PROVIDER=anthropic` set (its `monkeypatch.delenv` assumption —
+    "absence falls back to the mock default" — didn't hold once a real
+    `.env` file existed to re-populate it via `load_dotenv`); fixed by
+    forcing `mock` explicitly instead of relying on absence.
+  - **The shared-password login gate never actually worked.**
+    `aar/web/routes/auth.py` and `aar/web/templates/login.html` existed
+    and were correct, but `create_app()` never called
+    `app.include_router(auth.router)` and never registered
+    `SessionMiddleware` — so `AAR_ACCESS_PASSWORD` was silently inert:
+    anyone reaching the URL had full access regardless of whether a
+    password was configured, with no error or indication anywhere. Found
+    while discussing deployment (the user is considering hosting this for
+    2 more facilitators to share). Fixed in `aar/web/app.py`: added the
+    router, `SessionMiddleware(secret_key=settings.session_secret)`, and a
+    `require_login` HTTP middleware redirecting to `/login` when
+    `settings.auth_enabled` and the session isn't authenticated. Middleware
+    *registration order* matters here — Starlette runs the last-added
+    middleware outermost/first, so `require_login` (added first) ends up
+    wrapping *inside* `SessionMiddleware` (added second), meaning the
+    session is attached before `require_login` reads it; got this backwards
+    on the first attempt (`AssertionError: SessionMiddleware must be
+    installed`), verified the fix by actually running the app with a real
+    password end-to-end via curl, not just reasoning about it. `itsdangerous`
+    (required by `SessionMiddleware`, previously only present transitively)
+    added to `requirements.txt` explicitly. 4 new tests
+    (`tests/integration/test_web_app.py`) cover: no password configured →
+    gate skipped, password configured → redirect to `/login`, wrong
+    password rejected, correct password grants access.
+
+  140/140 tests passing (1 documented skip, unrelated). Real-provider usage
+  logging added (`aar/llm/provider_anthropic.py` logs input/output token
+  counts per call) after the user asked what an analysis run costs and none
+  of it had been tracked — no cost figure existed for runs before this was
+  added, only an order-of-magnitude estimate could be given.
+
+- **Phase 24** *(post-handoff, largest single-day phase)*: a full day of
+  live-testing-driven iteration on the real (non-synthetic) incident used
+  throughout Phase 23, covering six thematic clusters:
+
+  **Photo-per-bevelvoerder linking (full feature, built from scratch).**
+  `SourceDocument` gained `linked_commander_report_id` (independent of the
+  existing `event_id` — a photo can be linked to a moment, a commander,
+  both, or neither) plus a new `POST /media/link-commander` route and
+  `media_service.link_to_commander_report()`. The facilitator can now
+  upload a photo directly from three places — Bronnen, Overzicht, and a
+  bevelvoerder's own overlay in Waarnemingen & acties — with the last one
+  able to upload *and* link in one request (`upload_photos` gained an
+  optional `commander_report_id` form field). Every photo thumbnail
+  everywhere (overlay, compare view, Incidentverloop) now opens in the
+  shared lightbox (`openLightbox`/Escape-to-close, previously only wired
+  up on Overzicht/Bronnen/Definitieve AAR) and has a hover-revealed delete
+  button. General "situatie" beeldmateriaal (Overzicht, Definitieve AAR)
+  was made exclusive of commander-linked photos and then, on later
+  explicit instruction, reverted to inclusive — a photo linked to a
+  commander still shows in the general pool too, linking is additive not
+  exclusive.
+
+  **Real bug found & fixed: SQLite id-reuse + browser caching showed the
+  wrong photo after delete+re-upload.** SQLite's default `INTEGER PRIMARY
+  KEY` (no `AUTOINCREMENT`) reuses a deleted row's id for the next insert
+  when that row held the table's current highest id — reproduced exactly:
+  upload photo A, delete it, upload photo B, B gets A's old id. Combined
+  with `FileResponse` on `GET /media/{doc_id}` carrying no explicit
+  `Cache-Control`, a browser could serve photo A's bytes from its own
+  cache for that URL even after B replaced it, without ever asking the
+  server. Fixed two ways: (1) `Cache-Control: no-cache` on the response —
+  forces revalidation every time, and since B's file has a different
+  mtime/ETag than A's, the server correctly returns fresh content instead
+  of a stale 304; (2) the actual root cause — `source_documents` was
+  migrated on the live DB (rename-recreate-with-`AUTOINCREMENT`-copy-drop,
+  data preserved, verified on a copy first) so ids are never reused again;
+  the SQLAlchemy model also gained `__table_args__ = {"sqlite_autoincrement":
+  True}` so fresh databases get this from the start. Verified end-to-end
+  with a real delete+reupload cycle after each fix.
+
+  **AAR finalize/reopen write-lock.** "AAR afronden" previously only set a
+  cosmetic status flag — every mutating route still worked on a
+  "finalized" incident. Added `writable_incident_or_404()` /
+  `assert_writable()` in `aar/web/deps.py` (raises a new
+  `IncidentFinalizedError`, an `HTTPException` subclass caught by a global
+  exception handler in `app.py` that redirects back to the referring page
+  with a flash message instead of a raw error page) and swapped it in for
+  every POST route across `interactive_aar.py`, `sources.py`,
+  `media.py`, and `analysis.py` — confirmed by grep that every mutating
+  route was covered, not just the obvious ones (media.py's
+  caption/link/delete routes don't fetch the `Incident` at all normally,
+  so they needed an explicit added check). A "Heropenen" button (with its
+  own confirm dialog) on Definitieve AAR reverses this
+  (`aar_service.reopen_incident`, sets status back to `IN_REVIEW`).
+  Verified end-to-end on a scratch incident: write blocked while
+  finalized, allowed again after reopening.
+
+  **Werkpunten tab (new).** A literal, unfiltered pull-through of the
+  form's "Wat kon beter of werkte niet" section (`source_section ==
+  "went_less_well"`), grouped per bevelvoerder — same pattern as the
+  earlier Extra opmerkingen tab. Initially read-only like Extra
+  opmerkingen; later given full manual add/edit/delete per item (hover-
+  revealed pencil/trash, matching a similarly-restored edit capability on
+  Positieve punten, which had briefly been made read-only earlier in the
+  project and was reinstated here) — `aar_service.add_manual_werkpunt` /
+  `update_werkpunt` / `delete_werkpunt`, creating/editing an `Observation`
+  row directly (`commander_report_id=None` for manual ones, shown under a
+  "Handmatig toegevoegd" group). The extraction addendum was also
+  strengthened specifically for the went_less_well/other sections: content
+  is now a normal, grammatically clean sentence (spelling/grammar
+  corrected) rather than the telegram-style fragment used everywhere else
+  in the tool, while still guaranteeing every source item becomes its own
+  item (no AI selection/merging) — this is the one deliberate exception to
+  the general telegram-style rule (§10/core principle 12).
+
+  **Incident-type colour system.** New `INCIDENT_TYPE_BADGE_CLASSES`/
+  `INCIDENT_TYPE_DOT_CLASSES` in `aar/web/templating.py` (Brand=rose,
+  Waterongeval=sky, Gevaarlijke stoffen=amber, Technische
+  hulpverlening=teal — the last wasn't specified by the user, chosen to
+  not collide with the other three) applied consistently in the sidebar,
+  Overzicht, Definitieve AAR's header, and the archive list — the
+  location-marker icon itself now carries the type colour rather than a
+  separate, easy-to-miss badge.
+
+  **Visual modernisation pass** (sidebar, Overzicht, Definitieve AAR —
+  "dit is wat de collega's zien"): sidebar active-nav state changed from a
+  flat highlight to a left accent bar; logo mark gained a subtle
+  gradient/glow; "Huidig incident" card restructured with an icon and
+  grouped badges. Overzicht's "Incidentgegevens" card rebuilt around a
+  prominent location+type header row instead of a flat `<dl>` grid; a new
+  "Eindbalans" callout for the incident description (initially a dark
+  `bg-ink-950` block, lightened to `bg-accent-50` on explicit feedback);
+  "Initiële oproep en info" made consistently rose-coloured across
+  Overzicht/Bronnen/Definitieve AAR (fixed always-red, not type-dependent,
+  per explicit instruction). Definitieve AAR's header rebuilt as a bordered
+  card with a type-coloured top band and a large type-coloured location
+  icon, replacing a plain title+meta-line. An `archive`/`image` icon (the
+  former was referenced in the sidebar but never actually defined —
+  silently rendered nothing) were added to `_icons.html`.
+
+  **More real-provider reliability fixes**, found via the same "verify
+  end-to-end against real DB state, don't just reason about the code"
+  discipline established in Phase 23 (this session added it explicitly to
+  the standing feedback record — see the memory file
+  `feedback_verify_before_handoff.md`):
+  - **Extraction item ordering**: the LLM's emission order for multiple
+    facts pulled from one continuous section of raw text is not reliable
+    evidence of their true left-to-right order in the source — reproduced
+    concretely (two facts from one commander's own "situation" text came
+    back reversed). Fixed by sorting extracted items, before persisting,
+    by `(SECTION_ORDER[source_section], position of source_passage found
+    literally within that section's raw text)` — `extraction.py::
+    _source_order_key()`. Since observation *id* order (insertion order)
+    is what reconstruction's ordering-enforcement treats as each
+    commander's ground truth, this fix is the actual root cause repair,
+    not a workaround.
+  - **Reconstruction's per-commander ordering enforcement could oscillate
+    and land on an arbitrary side of a genuine conflict.** When 3+
+    commanders' observations split across the same two adjacent events
+    with mutually-conflicting individual orderings (no order satisfies
+    everyone), the old bubble-sort swapped on *any* violation regardless
+    of what the swap itself broke — provably reproduced by re-running the
+    same fix function on its own already-"converged" output and getting a
+    *different* result, meaning it was never actually stable and depended
+    on the bounded iteration count landing on whichever side. Fixed in
+    `_enforce_per_commander_order()`: only swap on an unambiguous win
+    (violates one way, not the other); for a genuine conflict, fall back
+    to comparing each event's `max_section_rank` (an event that already
+    includes an action sorts after a still-purely-"situation" one — you
+    cannot act on something before observing it). `_observation_positions`
+    now returns a 3-tuple (commander id, position, section rank) instead
+    of 2; covered by a new dedicated unit test reproducing the exact
+    3-commander conflict.
+  - **Lesson singleton-deduplication.** A "lesson" clustering only one
+    discussion point is just that point restated under a new heading —
+    already fully visible on Te bespreken, so it read as a near-duplicate
+    list. `run_lessons()` now discards any `Lesson` whose resolved
+    `discussion_point_ids` has fewer than 2 entries (its `Improvement`
+    proposal is kept regardless, just left unlinked — it still has
+    standalone value). The addendum already asked the LLM not to do this
+    1:1 clustering; it didn't reliably comply, so — same established
+    pattern — the fix moved to deterministic code.
+  - **Positive-findings fallback**, mirroring the Phase 23
+    assumption/uncertainty fallback: any `went_well`-section observation
+    the LLM's own `positive_findings` output doesn't reference gets a
+    minimal fallback `PositiveFinding` added automatically
+    (`findings.py`), after a live run returned zero positive findings
+    despite 4 clear went_well observations existing.
+
+  **Smaller UX fixes**, several from directly-reported live-testing
+  friction: mutating actions inside a bevelvoerder's overlay (photo
+  upload/link/delete, notities save/delete) now round-trip back to that
+  same overlay open (`?tab=waarnemingen&open={report_id}` + an
+  auto-reopen script on load) instead of dropping the facilitator back at
+  the closed tab; toggling a discussion point's "besproken" state now
+  scrolls back to that exact point (`#dp-{id}` fragment appended *after*
+  the flash query string, not before — a fragment placed first would
+  swallow the query string into itself) instead of jumping to the top of
+  the page; the "AI opschonen" cleanup routes and the Overzicht/photo
+  upload routes all gained an optional `redirect_to` form field (validated
+  against a same-incident-prefix allowlist against open-redirect) so a
+  button's caller controls where it returns to, rather than a hardcoded
+  target baked into the route. `Werkpunten`/`Extra opmerkingen`/`Positieve
+  punten` were brought to one consistent bullet-list visual style; the
+  discussion-points/lessons tab was likewise simplified from large
+  editable cards to compact hover-revealed rows.
+
 ## 9. Open Work / Known Bugs / Blocked / Unverified / Technical Debt
 
 - **RESOLVED in Phase 21** (previously listed here as unverified/blocked):
@@ -881,14 +1317,50 @@ change).
   accepting non-determinism in CI, neither done here). If duplication
   reappears on a different incident, check `aar/analysis/findings.py` and
   `aar/analysis/lessons.py`'s addenda first.
-- **UNVERIFIED (by design, needs real provider):** Stage 7 narrative
-  synthesis (`aar/analysis/narrative.py`, Phase 22) has only been exercised
-  against the mock provider so far, which — by design, see the module's
-  docstring — cannot actually produce a synthesised narrative, only an
-  honestly-labelled concatenated fallback. The user explicitly asked to
-  hold off on further real-API spend while iterating on the UI; run one
-  real analysis (`AAR_LLM_PROVIDER=anthropic`) to verify the actual prose
-  synthesis quality before considering this feature done.
+- **RESOLVED in Phase 23:** Stage 7 narrative synthesis quality is now
+  verified against the real provider on real (non-synthetic) incidents,
+  repeatedly — see Phase 23 for the specific issues found (false-
+  contradiction framing, action ordering, dropped resource details) and
+  fixed.
+- **Still open — real-LLM non-determinism is a recurring characteristic,
+  not a one-off bug**, observed across Phase 23 and again in Phase 24: the
+  same input, reanalysed multiple times, produced a materially different
+  number of discussion points/positive findings (including zero, more than
+  once) and sometimes ignored explicit ordering instructions. Five gaps of
+  this kind are now closed with deterministic code-level enforcement/
+  fallbacks: reconstruction ordering, findings assumption/uncertainty
+  fallback (Phase 23); extraction item ordering, reconstruction's
+  ambiguous-conflict resolution, findings went_well fallback, and lesson
+  singleton-deduplication (Phase 24) — this is the general pattern to
+  reach for when a gap is a *checkable* invariant. Not every such gap can
+  be fixed this way (e.g. "how many discussion points should a normal
+  incident have" has no deterministic answer) — if this keeps surfacing as
+  a facilitator-visible problem, consider whether `max_retries` (currently
+  1, in `aar/llm/base.py`) should increase for the findings/reconstruction
+  stages specifically. Standing process note from Phase 24: verify a fix
+  against real DB state end-to-end (including re-running it on its own
+  output to check it's actually stable/idempotent, not just "looks right
+  once") before reporting it as done — this caught the reconstruction
+  oscillation bug, which looked fine on a single manual check.
+- **RESOLVED in Phase 24:** photos/plans can now be linked to a specific
+  bevelvoerder (`SourceDocument.linked_commander_report_id`), independent
+  of the pre-existing event link — a photo can be pinned to a moment, a
+  commander, both, or neither. Upload + link works from three places
+  (Bronnen, Overzicht, the bevelvoerder's own overlay), and linking is
+  additive — a commander-linked photo still shows in the general
+  "situatie" beeldmateriaal pool too (not exclusive, per explicit later
+  instruction reversing an earlier exclusive design).
+- **Backup**: the app has no automated backup of `data/aar.db` or
+  `data/uploads/`. Discussed explicitly with the user after two real
+  incidents were accidentally deleted in Phase 23 (via the new delete
+  button, since hardened) — the user's call was that the Google
+  Form/Sheet response data already living permanently in their Drive is
+  backup enough for the raw commander-report source data, and explicitly
+  decided against a separate backup of the tool's own DB/analysis/photos,
+  understanding that AI analysis, facilitator edits, and any uploaded
+  photos would need to be redone/re-uploaded if lost. Revisit if this
+  tool starts being used as the long-term archive rather than a working
+  session tool.
 - **Technical debt, accepted for v1:** pipeline stages commit independently
   rather than the whole `run_analysis()` call being one transaction — a
   mid-run failure leaves earlier stages' results persisted rather than

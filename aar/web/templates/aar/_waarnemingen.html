@@ -1,7 +1,31 @@
 {% import "_icons.html" as icons %}
 
+{% macro topic_blocks(topics) %}
+{% if not topics %}
+<p class="text-[13px] text-slate-400 italic">Nog geen analyse uitgevoerd voor dit verslag.</p>
+{% else %}
+<div class="space-y-3">
+  {% for section_key, section_label, obs_list in topics %}
+  <div class="rounded-md border p-4 {{ section_box_class(section_key) }}">
+    <div class="flex items-center gap-2 mb-2">
+      <span class="h-2 w-2 rounded-full {{ section_dot_class(section_key) }}"></span>
+      <span class="text-[11px] font-semibold uppercase tracking-wide text-slate-600">{{ section_label }}</span>
+    </div>
+    <ul class="space-y-1">
+      {% for o in obs_list %}
+      <li class="text-[13px] text-slate-700 leading-snug flex gap-1.5">
+        <span class="text-slate-400">&bull;</span><span>{{ o.content }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endmacro %}
+
 <h2 class="text-[13px] font-semibold text-ink-900 mb-1">Waarnemingen &amp; acties per bevelvoerder</h2>
-<p class="text-[11.5px] text-slate-500 mb-3">Klik een bevelvoerder open tijdens de bespreking — schermvullend, korte regels per topic als leidraad, de bevelvoerder licht zelf mondeling toe. Sluit af als je klaar bent.</p>
+<p class="text-[11.5px] text-slate-500 mb-3">Klik een bevelvoerder open tijdens de bespreking — schermvullend, korte regels per topic als leidraad, de bevelvoerder licht zelf mondeling toe. Vink meerdere aan en klik "Tonen" om ze naast elkaar te vergelijken.</p>
 
 {% if not commander_reports %}
 <div class="rounded-lg border border-dashed border-slate-300 bg-slate-50/60 px-6 py-8 text-center text-[13px] text-slate-500">
@@ -10,25 +34,25 @@
 {% else %}
 <div class="space-y-2.5">
   {% for report in commander_reports %}
-  {% set stats = commander_stats.get(report.id, {}) %}
-  <button type="button" onclick="openCommanderOverlay('{{ report.id }}')"
-          class="w-full flex items-center gap-3 px-4 py-3 rounded-[13px] border border-slate-200 border-l-4 {{ objective_border_class(report.objective_achieved) }} bg-white shadow-card hover:bg-slate-50/70 transition text-left">
-    <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-ink-900 text-white text-[12px] font-mono font-bold">
-      {{ report.callsign[:3] if report.callsign else "?" }}
-    </span>
-    <div class="min-w-0 flex-1">
-      <div class="text-[13.5px] font-semibold text-ink-900">{{ report.rank }} {{ report.surname }}</div>
-      <div class="text-[11.5px] text-slate-500">{{ report.callsign }} &middot; {{ report.unit_name }}</div>
-    </div>
-    <div class="hidden sm:flex items-center gap-2.5 text-[11px] text-slate-500">
-      {% if stats.get('discussion') %}<span>{{ icons.icon('chat', 'w-3 h-3 inline -mt-0.5') }} {{ stats.discussion }}</span>{% endif %}
-      {% if stats.get('positive') %}<span>{{ icons.icon('check-circle', 'w-3 h-3 inline -mt-0.5') }} {{ stats.positive }}</span>{% endif %}
-    </div>
-    <span class="shrink-0 rounded px-1.5 py-[3px] text-[10.5px] font-semibold leading-none {{ objective_badge_class(report.objective_achieved) }}">
-      Doel: {{ report.objective_achieved.value if report.objective_achieved else "onbekend" }}
-    </span>
-    {{ icons.icon('arrow-right', 'w-4 h-4 text-slate-300 shrink-0') }}
-  </button>
+  <div class="flex items-center gap-2.5">
+    <input type="checkbox" class="compare-checkbox shrink-0 h-4 w-4 rounded border-slate-300 text-accent-600 focus:ring-accent-500" value="{{ report.id }}" title="Selecteren om te vergelijken">
+    {% set stats = commander_stats.get(report.id, {}) %}
+    <button type="button" onclick="openCommanderOverlay('{{ report.id }}')"
+            class="flex-1 flex items-center gap-3 px-4 py-3 rounded-[13px] border border-slate-200 bg-white shadow-card hover:bg-slate-50/70 transition text-left">
+      <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-ink-900 text-white text-[12px] font-mono font-bold">
+        {{ report.callsign[:3] if report.callsign else "?" }}
+      </span>
+      <div class="min-w-0 flex-1">
+        <div class="text-[13.5px] font-semibold text-ink-900">{{ report.rank }} {{ report.surname }}</div>
+        <div class="text-[11.5px] text-slate-500">{{ report.callsign }} &middot; {{ report.unit_name }}</div>
+      </div>
+      <div class="hidden sm:flex items-center gap-2.5 text-[11px] text-slate-500">
+        {% if stats.get('discussion') %}<span>{{ icons.icon('chat', 'w-3 h-3 inline -mt-0.5') }} {{ stats.discussion }}</span>{% endif %}
+        {% if stats.get('positive') %}<span>{{ icons.icon('check-circle', 'w-3 h-3 inline -mt-0.5') }} {{ stats.positive }}</span>{% endif %}
+      </div>
+      {{ icons.icon('arrow-right', 'w-4 h-4 text-slate-300 shrink-0') }}
+    </button>
+  </div>
 
   <div id="commander-overlay-{{ report.id }}" class="commander-overlay hidden fixed inset-0 z-40 bg-white overflow-y-auto">
     <div class="max-w-3xl mx-auto px-8 py-8">
@@ -41,9 +65,6 @@
             <div class="text-[16px] font-semibold text-ink-900">{{ report.rank }} {{ report.surname }}</div>
             <div class="text-[12.5px] text-slate-500">{{ report.callsign }} &middot; {{ report.unit_name }}</div>
           </div>
-          <span class="shrink-0 rounded px-2 py-1 text-[11px] font-semibold leading-none {{ objective_badge_class(report.objective_achieved) }}">
-            Doel: {{ report.objective_achieved.value if report.objective_achieved else "onbekend" }}
-          </span>
         </div>
         <button type="button" onclick="closeCommanderOverlay()"
                 class="inline-flex items-center gap-1.5 rounded-md border border-slate-300 px-3 py-2 text-[13px] font-semibold text-slate-700 hover:bg-slate-50 transition shrink-0">
@@ -51,46 +72,87 @@
         </button>
       </div>
 
-      {% set topics = commander_topics.get(report.id, []) %}
-      {% if not topics %}
-      <p class="text-[13px] text-slate-400 italic">Nog geen analyse uitgevoerd voor dit verslag.</p>
-      {% else %}
-      <div class="space-y-3">
-        {% for supergroup_key, supergroup_label, categories in topics %}
-        <div class="rounded-md border p-4 {{ supergroup_box_class(supergroup_key) }}">
-          <div class="flex items-center gap-2 mb-2">
-            <span class="h-2 w-2 rounded-full {{ supergroup_dot_class(supergroup_key) }}"></span>
-            <span class="text-[11px] font-semibold uppercase tracking-wide text-slate-600">{{ supergroup_label }}</span>
-          </div>
-          <div class="space-y-2">
-            {% for category, obs_list in categories %}
-            <div>
-              {% if categories|length > 1 %}
-              <div class="text-[10.5px] font-medium text-slate-500 mb-0.5">{{ category_label(category) }}</div>
-              {% endif %}
-              <ul class="space-y-1">
-                {% for o in obs_list %}
-                <li class="text-[13px] text-slate-700 leading-snug flex gap-1.5">
-                  <span class="text-slate-400">&bull;</span><span>{{ o.content }}</span>
-                </li>
-                {% endfor %}
-              </ul>
-            </div>
-            {% endfor %}
+      {{ topic_blocks(commander_topics.get(report.id, [])) }}
+
+      <div class="inline-notes-box mt-3 rounded-md border border-yellow-200 bg-yellow-50/70 p-4">
+        <div class="flex items-center justify-between mb-1.5">
+          <h3 class="text-[11px] font-semibold uppercase tracking-wide text-yellow-800">Extra notities tijdens bespreking</h3>
+          <div class="inline-notes-view flex items-center gap-2.5 {{ 'hidden' if not report.facilitator_notes }}">
+            <button type="button" class="inline-notes-edit-btn text-yellow-600 hover:text-yellow-800 transition">{{ icons.icon('pencil', 'w-3.5 h-3.5') }}</button>
+            <button type="button" class="inline-notes-delete-btn text-yellow-600 hover:text-rose-600 transition">{{ icons.icon('trash', 'w-3.5 h-3.5') }}</button>
           </div>
         </div>
-        {% endfor %}
-      </div>
-      {% endif %}
 
-      {% if report.objective_achieved_explanation %}
-      <div class="mt-3 rounded-md border border-slate-200 bg-slate-50/50 p-4">
-        <div class="text-[10.5px] font-semibold uppercase tracking-wide text-slate-400 mb-0.5">Toelichting doelbereik</div>
-        <p class="text-[13px] text-slate-600 leading-relaxed">{{ report.objective_achieved_explanation }}</p>
-      </div>
-      {% endif %}
+        <p class="inline-notes-view inline-notes-text text-[13px] text-slate-700 leading-snug whitespace-pre-line {{ 'hidden' if not report.facilitator_notes }}">{{ report.facilitator_notes }}</p>
 
-      <details class="mt-5 pt-4 border-t border-slate-100">
+        <form method="post" action="/incidents/{{ incident.id }}/aar/commander-notes/{{ report.id }}"
+              class="inline-notes-form space-y-2 {{ 'hidden mt-2 pt-2 border-t border-yellow-200/70' if report.facilitator_notes }}">
+          <textarea name="text" rows="3" placeholder="Aanvullingen die de bevelvoerder mondeling geeft..."
+                    class="w-full rounded-md border border-slate-300 px-3 py-2 text-[12.5px] leading-relaxed focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500">{{ report.facilitator_notes }}</textarea>
+          <button type="submit" class="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-[12px] font-semibold text-slate-700 hover:bg-slate-50 transition">
+            Notities opslaan
+          </button>
+        </form>
+      </div>
+
+      <div class="mt-5 pt-4 border-t border-slate-100">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Beeldmateriaal bij dit verslag</h3>
+        </div>
+        {% set linked_commander_photos = photos_by_commander_report.get(report.id, []) %}
+        {% if linked_commander_photos %}
+        <div class="flex flex-wrap gap-2 mb-2.5">
+          {% for photo in linked_commander_photos %}
+          {% set is_image = photo.original_filename.lower().endswith(('.jpg', '.jpeg', '.png', '.webp')) %}
+          <div class="relative h-16 w-16 shrink-0 group/photo">
+            <a href="/incidents/{{ incident.id }}/media/{{ photo.id }}" target="_blank" title="{{ photo.caption or photo.original_filename }}"
+               class="block h-full w-full rounded-md overflow-hidden border border-slate-200 {{ 'cursor-zoom-in' if is_image }}"
+               {% if is_image %}onclick="openLightbox('/incidents/{{ incident.id }}/media/{{ photo.id }}'); return false;"{% endif %}>
+              {% if is_image %}
+              <img src="/incidents/{{ incident.id }}/media/{{ photo.id }}" alt="{{ photo.caption or photo.original_filename }}" class="w-full h-full object-cover bg-slate-100">
+              {% else %}
+              <div class="flex h-full w-full items-center justify-center bg-slate-50 text-slate-400">{{ icons.icon('document', 'w-5 h-5') }}</div>
+              {% endif %}
+            </a>
+            <form method="post" action="/incidents/{{ incident.id }}/media/{{ photo.id }}/delete"
+                  onsubmit="return confirm('Dit bestand verwijderen?')"
+                  class="absolute -top-1.5 -right-1.5 opacity-0 group-hover/photo:opacity-100 transition">
+              <input type="hidden" name="redirect_to" value="/incidents/{{ incident.id }}/aar?tab=waarnemingen&open={{ report.id }}">
+              <button type="submit" class="flex h-5 w-5 items-center justify-center rounded-full bg-white border border-slate-200 text-slate-400 hover:text-rose-600 hover:border-rose-200 shadow-sm transition">
+                {{ icons.icon('trash', 'w-3 h-3') }}
+              </button>
+            </form>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-[12px] text-slate-400 italic mb-2.5">Nog niets gekoppeld.</p>
+        {% endif %}
+        <details>
+          <summary class="cursor-pointer text-[11px] font-medium text-accent-600 hover:text-accent-700 select-none">Foto/plan toevoegen</summary>
+          <form method="post" action="/incidents/{{ incident.id }}/sources/photos" enctype="multipart/form-data" class="mt-2 flex gap-2">
+            <input type="hidden" name="commander_report_id" value="{{ report.id }}">
+            <input type="hidden" name="redirect_to" value="/incidents/{{ incident.id }}/aar?tab=waarnemingen&open={{ report.id }}">
+            <input type="file" name="files" multiple accept=".jpg,.jpeg,.png,.webp,.pdf" required
+                   class="flex-1 text-[11.5px] text-slate-600 file:mr-2 file:rounded file:border-0 file:bg-slate-100 file:px-2 file:py-1 file:text-[11px] file:font-medium file:text-slate-700 hover:file:bg-slate-200">
+            <button type="submit" class="rounded-md bg-slate-800 px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-slate-900 transition shrink-0">Uploaden</button>
+          </form>
+          {% if unlinked_photos_for_commander %}
+          <form method="post" action="/incidents/{{ incident.id }}/media/link-commander" class="mt-2 flex gap-2">
+            <select name="photo_id" required class="flex-1 rounded-md border border-slate-300 px-2.5 py-1.5 text-[12px] focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500">
+              <option value="" disabled selected>Of koppel een reeds geüploade foto...</option>
+              {% for photo in unlinked_photos_for_commander %}
+              <option value="{{ photo.id }}">{{ photo.caption or photo.original_filename }}</option>
+              {% endfor %}
+            </select>
+            <input type="hidden" name="commander_report_id" value="{{ report.id }}">
+            <button type="submit" class="rounded-md border border-slate-300 px-3 py-1.5 text-[12px] font-semibold text-slate-700 hover:bg-slate-50 transition shrink-0">Koppelen</button>
+          </form>
+          {% endif %}
+        </details>
+      </div>
+
+      <details class="mt-3 pt-4 border-t border-slate-100">
         <summary class="cursor-pointer text-[12px] font-medium text-slate-400 hover:text-slate-600 select-none">
           {{ icons.icon('pencil', 'w-3 h-3 inline -mt-0.5') }} Gegevens bewerken
         </summary>
@@ -116,39 +178,102 @@
                    class="w-full rounded-md border border-slate-300 px-2.5 py-1.5 text-[12.5px] focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500">
           </div>
           <div class="col-span-2">
-            <label class="block text-[10.5px] font-medium text-slate-400 mb-0.5">Doel bereikt (eigen inschatting bevelvoerder)</label>
-            <select name="objective_achieved"
-                    class="w-full rounded-md border border-slate-300 px-2.5 py-1.5 text-[12.5px] focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500">
-              <option value="">Onbekend</option>
-              {% for opt in ObjectiveAchieved %}
-              <option value="{{ opt.value }}" {{ "selected" if report.objective_achieved == opt else "" }}>{{ opt.value }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="col-span-2">
-            <label class="block text-[10.5px] font-medium text-slate-400 mb-0.5">Toelichting doelbereik</label>
-            <textarea name="objective_achieved_explanation" rows="2"
-                      class="w-full rounded-md border border-slate-300 px-2.5 py-1.5 text-[12.5px] leading-relaxed focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500">{{ report.objective_achieved_explanation }}</textarea>
-          </div>
-          <div class="col-span-2">
             <button type="submit" class="rounded-md border border-slate-300 px-3 py-1.5 text-[12px] font-semibold text-slate-700 hover:bg-slate-50 transition">
               Gegevens opslaan
             </button>
           </div>
         </form>
       </details>
-
-      <form method="post" action="/incidents/{{ incident.id }}/aar/commander-notes/{{ report.id }}" class="mt-3 pt-4 border-t border-slate-100 pb-8">
-        <label class="block text-[10.5px] font-semibold uppercase tracking-wide text-slate-400 mb-1">Notities tijdens bespreking</label>
-        <textarea name="text" rows="3" placeholder="Aanvullingen die de bevelvoerder mondeling geeft..."
-                  class="w-full rounded-md border border-slate-300 px-3 py-2 text-[12.5px] leading-relaxed focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500">{{ report.facilitator_notes }}</textarea>
-        <button type="submit" class="mt-2 rounded-md border border-slate-300 px-3 py-1.5 text-[12px] font-semibold text-slate-700 hover:bg-slate-50 transition">
-          Notities opslaan
-        </button>
-      </form>
     </div>
   </div>
   {% endfor %}
+</div>
+
+<div class="mt-3 flex justify-end">
+  <button type="button" onclick="showComparison()"
+          class="inline-flex items-center gap-1.5 rounded-md bg-ink-900 px-3.5 py-2 text-[13px] font-semibold text-white hover:bg-ink-800 transition">
+    {{ icons.icon('arrow-right', 'w-3.5 h-3.5') }} Tonen
+  </button>
+</div>
+
+<div id="compare-panel" class="hidden fixed inset-0 z-40 bg-white overflow-y-auto">
+  <div class="max-w-[1600px] mx-auto px-8 py-8">
+    <div class="flex items-center justify-between mb-6">
+      <h2 class="text-[15px] font-semibold text-ink-900">Bevelvoerders naast elkaar</h2>
+      <button type="button" onclick="closeComparison()"
+              class="inline-flex items-center gap-1.5 rounded-md border border-slate-300 px-3 py-2 text-[13px] font-semibold text-slate-700 hover:bg-slate-50 transition shrink-0">
+        Sluiten (Esc)
+      </button>
+    </div>
+    <div id="compare-grid" class="grid gap-5 items-start">
+      {% for report in commander_reports %}
+      <div class="compare-col" data-report-id="{{ report.id }}" style="display:none;">
+        <div class="flex items-center gap-2.5 mb-3 pb-3 border-b border-slate-200">
+          <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-ink-900 text-white text-[12px] font-mono font-bold">
+            {{ report.callsign[:3] if report.callsign else "?" }}
+          </span>
+          <div class="min-w-0">
+            <div class="text-[13px] font-semibold text-ink-900 truncate">{{ report.rank }} {{ report.surname }}</div>
+            <div class="text-[11px] text-slate-500 truncate">{{ report.callsign }} &middot; {{ report.unit_name }}</div>
+          </div>
+        </div>
+        {{ topic_blocks(commander_topics.get(report.id, [])) }}
+
+        <div class="inline-notes-box mt-3 rounded-md border border-yellow-200 bg-yellow-50/70 p-3">
+          <div class="flex items-center justify-between mb-1">
+            <h3 class="text-[10px] font-semibold uppercase tracking-wide text-yellow-800">Extra notities tijdens bespreking</h3>
+            <div class="inline-notes-view flex items-center gap-2 {{ 'hidden' if not report.facilitator_notes }}">
+              <button type="button" class="inline-notes-edit-btn text-yellow-600 hover:text-yellow-800 transition">{{ icons.icon('pencil', 'w-3 h-3') }}</button>
+              <button type="button" class="inline-notes-delete-btn text-yellow-600 hover:text-rose-600 transition">{{ icons.icon('trash', 'w-3 h-3') }}</button>
+            </div>
+          </div>
+
+          <p class="inline-notes-view inline-notes-text text-[12px] text-slate-700 leading-snug whitespace-pre-line {{ 'hidden' if not report.facilitator_notes }}">{{ report.facilitator_notes }}</p>
+
+          <form method="post" action="/incidents/{{ incident.id }}/aar/commander-notes/{{ report.id }}"
+                class="inline-notes-form space-y-1.5 {{ 'hidden mt-1.5 pt-1.5 border-t border-yellow-200/70' if report.facilitator_notes }}">
+            <textarea name="text" rows="2" placeholder="Aanvullingen die de bevelvoerder mondeling geeft..."
+                      class="w-full rounded-md border border-slate-300 px-2.5 py-1.5 text-[12px] leading-relaxed focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500">{{ report.facilitator_notes }}</textarea>
+            <button type="submit" class="rounded-md border border-slate-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 transition">
+              Notities opslaan
+            </button>
+          </form>
+        </div>
+
+        {% set compare_photos = photos_by_commander_report.get(report.id, []) %}
+        <div class="mt-3 pt-3 border-t border-slate-100">
+          <h3 class="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-1.5">Beeldmateriaal</h3>
+          {% if compare_photos %}
+          <div class="flex flex-wrap gap-1.5 mb-2">
+            {% for photo in compare_photos %}
+            {% set is_image = photo.original_filename.lower().endswith(('.jpg', '.jpeg', '.png', '.webp')) %}
+            <a href="/incidents/{{ incident.id }}/media/{{ photo.id }}" target="_blank" title="{{ photo.caption or photo.original_filename }}"
+               class="block h-12 w-12 shrink-0 rounded-md overflow-hidden border border-slate-200 {{ 'cursor-zoom-in' if is_image }}"
+               {% if is_image %}onclick="openLightbox('/incidents/{{ incident.id }}/media/{{ photo.id }}'); return false;"{% endif %}>
+              {% if is_image %}
+              <img src="/incidents/{{ incident.id }}/media/{{ photo.id }}" alt="{{ photo.caption or photo.original_filename }}" class="w-full h-full object-cover bg-slate-100">
+              {% else %}
+              <div class="flex h-full w-full items-center justify-center bg-slate-50 text-slate-400">{{ icons.icon('document', 'w-4 h-4') }}</div>
+              {% endif %}
+            </a>
+            {% endfor %}
+          </div>
+          {% endif %}
+          <details>
+            <summary class="cursor-pointer text-[11px] font-medium text-accent-600 hover:text-accent-700 select-none">Foto/plan toevoegen</summary>
+            <form method="post" action="/incidents/{{ incident.id }}/sources/photos" enctype="multipart/form-data" class="compare-upload-form mt-2 flex gap-2">
+              <input type="hidden" name="commander_report_id" value="{{ report.id }}">
+              <input type="hidden" name="redirect_to" class="compare-upload-redirect" value="/incidents/{{ incident.id }}/aar?tab=waarnemingen">
+              <input type="file" name="files" multiple accept=".jpg,.jpeg,.png,.webp,.pdf" required
+                     class="flex-1 text-[11px] text-slate-600 file:mr-2 file:rounded file:border-0 file:bg-slate-100 file:px-2 file:py-1 file:text-[10.5px] file:font-medium file:text-slate-700 hover:file:bg-slate-200">
+              <button type="submit" class="rounded-md bg-slate-800 px-2.5 py-1.5 text-[11px] font-semibold text-white hover:bg-slate-900 transition shrink-0">Uploaden</button>
+            </form>
+          </details>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
 </div>
 
 <script>
@@ -160,8 +285,96 @@
   function closeCommanderOverlay() {
     document.querySelectorAll('.commander-overlay').forEach(function (el) { el.classList.add('hidden'); });
   }
-  document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') closeCommanderOverlay();
+  // Inline-notitie vakjes ("Extra notities tijdens bespreking") worden op
+  // de achtergrond opgeslagen, zonder de pagina te herladen — anders
+  // verlies je bij het opslaan je "naast elkaar"-vergelijkingsselectie en
+  // scrollpositie. Event delegation zodat dit voor elke overlay/kolom
+  // werkt; geen JS -> gewoon form-submit als terugval.
+  document.addEventListener('click', function (e) {
+    var addBtn = e.target.closest('.inline-notes-add-btn');
+    var editBtn = e.target.closest('.inline-notes-edit-btn');
+    if (addBtn || editBtn) {
+      var box = e.target.closest('.inline-notes-box');
+      box.querySelectorAll('.inline-notes-view').forEach(function (el) { el.classList.add('hidden'); });
+      var form = box.querySelector('.inline-notes-form');
+      form.classList.remove('hidden');
+      form.querySelector('textarea').focus();
+      return;
+    }
+    var delBtn = e.target.closest('.inline-notes-delete-btn');
+    if (delBtn) {
+      if (!confirm('Dit commentaar verwijderen?')) return;
+      submitInlineNotes(e.target.closest('.inline-notes-box'), '');
+    }
   });
+  document.addEventListener('submit', function (e) {
+    if (!e.target.classList.contains('inline-notes-form')) return;
+    e.preventDefault();
+    var box = e.target.closest('.inline-notes-box');
+    submitInlineNotes(box, e.target.querySelector('textarea').value);
+  });
+  function submitInlineNotes(box, text) {
+    var form = box.querySelector('.inline-notes-form');
+    var body = new URLSearchParams();
+    body.set('text', text);
+    fetch(form.action, { method: 'POST', body: body, headers: { 'Content-Type': 'application/x-www-form-urlencoded' } })
+      .then(function (resp) {
+        if (!resp.ok) { alert('Opslaan mislukt.'); return; }
+        var trimmed = text.trim();
+        form.classList.add('hidden');
+        var viewEls = box.querySelectorAll('.inline-notes-view');
+        var textEl = box.querySelector('.inline-notes-text');
+        if (trimmed) {
+          if (textEl) { textEl.textContent = trimmed; }
+          viewEls.forEach(function (el) { el.classList.remove('hidden'); });
+        } else {
+          viewEls.forEach(function (el) { el.classList.add('hidden'); });
+        }
+      })
+      .catch(function () { alert('Opslaan mislukt — controleer de verbinding.'); });
+  }
+  {% if open_report_id %}
+  openCommanderOverlay('{{ open_report_id }}');
+  {% endif %}
+  function showComparison() {
+    var checked = Array.from(document.querySelectorAll('.compare-checkbox:checked')).map(function (c) { return c.value; });
+    if (checked.length === 0) {
+      alert('Vink minstens 1 bevelvoerder aan om te tonen.');
+      return;
+    }
+    document.querySelectorAll('.commander-overlay').forEach(function (el) { el.classList.add('hidden'); });
+    document.querySelectorAll('.compare-col').forEach(function (col) {
+      col.style.display = checked.indexOf(col.dataset.reportId) !== -1 ? '' : 'none';
+    });
+    document.getElementById('compare-grid').style.gridTemplateColumns = 'repeat(' + checked.length + ', minmax(300px, 1fr))';
+    document.getElementById('compare-panel').classList.remove('hidden');
+    window.scrollTo(0, 0);
+  }
+  function closeComparison() {
+    document.getElementById('compare-panel').classList.add('hidden');
+  }
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') { closeCommanderOverlay(); closeComparison(); }
+  });
+  // Uploading a photo from within the compare view is a normal (non-AJAX)
+  // multipart form post, so the page does reload — but we can make it
+  // land back in the same compare view instead of the roster, by carrying
+  // the currently-checked report ids through the redirect and restoring
+  // them on load.
+  document.querySelectorAll('.compare-upload-form').forEach(function (form) {
+    form.addEventListener('submit', function () {
+      var checked = Array.from(document.querySelectorAll('.compare-checkbox:checked')).map(function (c) { return c.value; });
+      var redirectInput = form.querySelector('.compare-upload-redirect');
+      if (redirectInput && checked.length) {
+        redirectInput.value += '&compare=' + checked.join(',');
+      }
+    });
+  });
+  {% if compare_report_ids %}
+  document.querySelectorAll('.compare-checkbox').forEach(function (c) {
+    if ('{{ compare_report_ids }}'.split(',').indexOf(c.value) !== -1) { c.checked = true; }
+  });
+  showComparison();
+  {% endif %}
 </script>
 {% endif %}

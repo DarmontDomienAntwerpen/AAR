@@ -1,11 +1,22 @@
+# Secrets
+.env
+
+# Python
 .venv/
+venv/
 __pycache__/
 *.pyc
-.env
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Editor / OS / tooling
+.DS_Store
+.claude/
+CLAUDE.md
+
+# Project-specific
 data/*.db
 data/uploads/
 data/.session_secret
-.pytest_cache/
-.DS_Store
-*.egg-info/
 scripts/screenshots/

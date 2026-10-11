@@ -59,10 +59,19 @@ def _get_or_create_session_secret(project_root: Path) -> str:
 def get_settings() -> Settings:
     load_dotenv(PROJECT_ROOT / ".env", override=False)
 
+    # Overridable so tests can fully sandbox a run (both the DB *and* any
+    # file writes under project_root, e.g. data/uploads/) instead of only
+    # the DB — without this, "isolated" web tests were silently writing
+    # real files into the actual data/uploads/ directory, keyed by
+    # whatever incident id their own throwaway in-memory DB happened to
+    # assign (see tests/integration/test_web_app.py).
+    project_root_raw = os.environ.get("AAR_PROJECT_ROOT")
+    project_root = Path(project_root_raw) if project_root_raw else PROJECT_ROOT
+
     db_path_raw = os.environ.get("AAR_DB_PATH", "data/aar.db")
     db_path = Path(db_path_raw)
     if not db_path.is_absolute():
-        db_path = PROJECT_ROOT / db_path
+        db_path = project_root / db_path
 
     return Settings(
         llm_provider=os.environ.get("AAR_LLM_PROVIDER", "mock").strip().lower(),
@@ -71,5 +80,6 @@ def get_settings() -> Settings:
         db_path=db_path,
         log_level=os.environ.get("AAR_LOG_LEVEL", "INFO").strip().upper(),
         access_password=os.environ.get("AAR_ACCESS_PASSWORD") or None,
-        session_secret=_get_or_create_session_secret(PROJECT_ROOT),
+        session_secret=_get_or_create_session_secret(project_root),
+        project_root=project_root,
     )

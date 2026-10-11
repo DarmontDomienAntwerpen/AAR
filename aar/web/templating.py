@@ -10,7 +10,7 @@ from urllib.parse import quote
 
 from fastapi.templating import Jinja2Templates
 
-from aar.models.enums import DiscussionOrigin, IncidentStatus, IncidentType, ObjectiveAchieved
+from aar.models.enums import DiscussionOrigin, IncidentStatus, IncidentType
 from aar.schemas.constants import CATEGORY_LABELS_NL, CATEGORY_ORDER
 from aar.ui.labels import CONFIDENCE_STATE_LABELS_NL, DISCUSSION_ORIGIN_LABELS_NL, OBSERVATION_TYPE_LABELS_NL
 
@@ -53,6 +53,22 @@ STATUS_BADGE_CLASSES = {
     IncidentStatus.FINALIZED: "bg-emerald-50 text-emerald-700",
 }
 
+# One colour per incident type, used consistently wherever the type is
+# shown (sidebar, Overzicht, archive) so a facilitator recognises the kind
+# of incident at a glance rather than reading the label every time.
+INCIDENT_TYPE_BADGE_CLASSES = {
+    IncidentType.BRAND: "bg-rose-50 text-rose-700",
+    IncidentType.WATERONGEVAL: "bg-sky-50 text-sky-700",
+    IncidentType.GEVAARLIJKE_STOFFEN: "bg-amber-50 text-amber-700",
+    IncidentType.TECHNISCHE_HULPVERLENING: "bg-teal-50 text-teal-700",
+}
+INCIDENT_TYPE_DOT_CLASSES = {
+    IncidentType.BRAND: "bg-rose-500",
+    IncidentType.WATERONGEVAL: "bg-sky-500",
+    IncidentType.GEVAARLIJKE_STOFFEN: "bg-amber-500",
+    IncidentType.TECHNISCHE_HULPVERLENING: "bg-teal-500",
+}
+
 
 ORIGIN_BORDER_CLASSES = {
     DiscussionOrigin.UNCERTAINTY: "border-l-amber-400",
@@ -71,49 +87,32 @@ ORIGIN_BORDER_CLASSES = {
 
 templates.env.globals["origin_border_class"] = lambda o: ORIGIN_BORDER_CLASSES.get(o, "border-l-slate-300")
 
-OBJECTIVE_BADGE_CLASSES = {
-    ObjectiveAchieved.JA: "bg-emerald-50 text-emerald-700",
-    ObjectiveAchieved.GEDEELTELIJK: "bg-amber-50 text-amber-700",
-    ObjectiveAchieved.NEE: "bg-rose-50 text-rose-700",
-    ObjectiveAchieved.NIET_TE_BEOORDELEN: "bg-slate-100 text-slate-500",
-}
-templates.env.globals["objective_badge_class"] = lambda o: OBJECTIVE_BADGE_CLASSES.get(o, "bg-slate-100 text-slate-500")
-
-OBJECTIVE_BORDER_CLASSES = {
-    ObjectiveAchieved.JA: "border-l-emerald-400",
-    ObjectiveAchieved.GEDEELTELIJK: "border-l-amber-400",
-    ObjectiveAchieved.NEE: "border-l-rose-400",
-    ObjectiveAchieved.NIET_TE_BEOORDELEN: "border-l-slate-300",
-}
-templates.env.globals["objective_border_class"] = lambda o: OBJECTIVE_BORDER_CLASSES.get(o, "border-l-slate-300")
-
 templates.env.globals["category_label"] = lambda c: CATEGORY_LABELS_NL.get(c, getattr(c, "value", str(c)))
 templates.env.globals["category_order"] = lambda c: CATEGORY_ORDER.get(c, 99)
 
-# "Waarnemingen & acties": broader thematic groups (feiten/inschatting/
-# acties/resultaat/goed/minder_goed/overig), each its own colour, rendered
-# as one column so the chronological narrative arc reads top-to-bottom.
-SUPERGROUP_BOX_CLASSES = {
-    "feiten": "border-slate-300 bg-slate-100/80",
-    "inschatting": "border-violet-300 bg-violet-100/70",
-    "acties": "border-sky-300 bg-sky-100/70",
-    "resultaat": "border-indigo-300 bg-indigo-100/70",
-    "goed": "border-emerald-300 bg-emerald-100/70",
-    "minder_goed": "border-rose-300 bg-rose-100/70",
-    "overig": "border-slate-300 bg-slate-100/60",
+# "Waarnemingen & acties": groups matching the form's own literal sections
+# (situation/actions/went_well/went_less_well/other/difficulties), each its
+# own colour, rendered as one column so the chronological arc reads
+# top-to-bottom.
+SECTION_BOX_CLASSES = {
+    "situation": "border-slate-300 bg-slate-100/80",
+    "actions": "border-sky-300 bg-sky-100/70",
+    "went_well": "border-emerald-300 bg-emerald-100/70",
+    "went_less_well": "border-rose-300 bg-rose-100/70",
+    "other": "border-slate-300 bg-slate-100/60",
+    "difficulties": "border-amber-300 bg-amber-100/60",
 }
-templates.env.globals["supergroup_box_class"] = lambda k: SUPERGROUP_BOX_CLASSES.get(k, "border-slate-300 bg-slate-100/70")
+templates.env.globals["section_box_class"] = lambda k: SECTION_BOX_CLASSES.get(k, "border-slate-300 bg-slate-100/70")
 
-SUPERGROUP_DOT_CLASSES = {
-    "feiten": "bg-slate-400",
-    "inschatting": "bg-violet-500",
-    "acties": "bg-sky-500",
-    "resultaat": "bg-indigo-500",
-    "goed": "bg-emerald-500",
-    "minder_goed": "bg-rose-500",
-    "overig": "bg-slate-400",
+SECTION_DOT_CLASSES = {
+    "situation": "bg-slate-400",
+    "actions": "bg-sky-500",
+    "went_well": "bg-emerald-500",
+    "went_less_well": "bg-rose-500",
+    "other": "bg-slate-400",
+    "difficulties": "bg-amber-500",
 }
-templates.env.globals["supergroup_dot_class"] = lambda k: SUPERGROUP_DOT_CLASSES.get(k, "bg-slate-400")
+templates.env.globals["section_dot_class"] = lambda k: SECTION_DOT_CLASSES.get(k, "bg-slate-400")
 
 COMMANDER_SECTION_FIELDS = [
     ("observations", "Waarnemingen"),
@@ -131,7 +130,6 @@ templates.env.filters["nl_date"] = _fmt_date
 templates.env.filters["nl_time"] = _fmt_time
 templates.env.filters["nl_datetime"] = _fmt_datetime
 templates.env.globals["IncidentType"] = IncidentType
-templates.env.globals["ObjectiveAchieved"] = ObjectiveAchieved
 
 
 def _maps_url(location: str) -> str:
@@ -161,6 +159,8 @@ templates.env.globals["maps_url"] = _maps_url
 templates.env.globals["incident_home_url"] = _incident_home_url
 templates.env.globals["status_label"] = lambda s: STATUS_LABELS_NL.get(s, getattr(s, "value", str(s)))
 templates.env.globals["status_badge_class"] = lambda s: STATUS_BADGE_CLASSES.get(s, "bg-ink-100 text-ink-600")
+templates.env.globals["incident_type_badge_class"] = lambda t: INCIDENT_TYPE_BADGE_CLASSES.get(t, "bg-ink-100 text-ink-600")
+templates.env.globals["incident_type_dot_class"] = lambda t: INCIDENT_TYPE_DOT_CLASSES.get(t, "bg-ink-400")
 templates.env.globals["origin_label"] = lambda o: DISCUSSION_ORIGIN_LABELS_NL.get(o, getattr(o, "value", str(o)))
 templates.env.globals["confidence_label"] = lambda c: CONFIDENCE_STATE_LABELS_NL.get(c, getattr(c, "value", str(c)))
 templates.env.globals["observation_type_label"] = lambda t: OBSERVATION_TYPE_LABELS_NL.get(t, getattr(t, "value", str(t)))

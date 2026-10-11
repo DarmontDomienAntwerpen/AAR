@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}AAR Tool{% endblock %} — Brandweer</title>
+  <title>{% block title %}AAR{% endblock %} — Brandweer</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -44,26 +44,26 @@
     <aside class="w-64 shrink-0 bg-ink-950 flex flex-col">
       <div class="px-5 h-16 flex items-center border-b border-white/[0.06]">
         <a href="/" class="flex items-center gap-2.5 group">
-          <span class="flex h-7 w-7 items-center justify-center rounded-[6px] bg-accent-600 text-white shrink-0">
-            {{ icons.icon('flag', 'w-4 h-4') }}
+          <span class="flex h-8 w-8 items-center justify-center rounded-[7px] bg-gradient-to-br from-accent-500 to-accent-700 text-white shrink-0 shadow-[0_2px_10px_-2px] shadow-accent-900 ring-1 ring-white/10">
+            {{ icons.icon('flame', 'w-4 h-4') }}
           </span>
           <div class="leading-none">
             <div class="font-semibold text-[13.5px] text-white tracking-tight">AAR</div>
-            <div class="text-[10.5px] text-ink-400 font-medium mt-0.5 tracking-wide">BRANDWEER</div>
+            <div class="text-[10px] text-ink-400 font-medium mt-0.5 tracking-wide">(meerdere eenheden)</div>
           </div>
         </a>
       </div>
 
       <nav class="px-3 pt-4 space-y-0.5">
         <a href="/"
-           class="flex items-center gap-2.5 rounded-md px-2.5 py-[7px] text-[13px] font-medium transition
-                  {{ 'bg-white/[0.07] text-white' if active_nav == 'archive' else 'text-ink-400 hover:bg-white/[0.04] hover:text-ink-100' }}">
+           class="flex items-center gap-2.5 rounded-md pl-[9px] pr-2.5 py-[7px] text-[13px] font-medium border-l-2 transition
+                  {{ 'border-accent-400 bg-white/[0.07] text-white' if active_nav == 'archive' else 'border-transparent text-ink-400 hover:bg-white/[0.04] hover:text-ink-100' }}">
           {{ icons.icon('archive', 'w-[15px] h-[15px]') }}
           Archief
         </a>
         <a href="/incidents/new"
-           class="flex items-center gap-2.5 rounded-md px-2.5 py-[7px] text-[13px] font-medium transition
-                  {{ 'bg-white/[0.07] text-white' if active_nav == 'new_incident' else 'text-ink-400 hover:bg-white/[0.04] hover:text-ink-100' }}">
+           class="flex items-center gap-2.5 rounded-md pl-[9px] pr-2.5 py-[7px] text-[13px] font-medium border-l-2 transition
+                  {{ 'border-accent-400 bg-white/[0.07] text-white' if active_nav == 'new_incident' else 'border-transparent text-ink-400 hover:bg-white/[0.04] hover:text-ink-100' }}">
           {{ icons.icon('plus', 'w-[15px] h-[15px]') }}
           Nieuw incident
         </a>
@@ -71,39 +71,47 @@
 
       {% if incident %}
       <div class="mt-5 px-3">
-        <div class="px-2.5 pb-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">Dit incident</div>
-        <div class="rounded-md bg-white/[0.04] px-3 py-2.5">
-          <div class="text-[12.5px] font-medium text-ink-100 truncate leading-snug">{{ incident.location }}</div>
-          <div class="text-[11px] text-ink-500 mt-0.5 tabular">{{ incident.date|nl_date }} &middot; {{ incident.incident_type.value }}</div>
-          <span class="inline-flex items-center mt-2 rounded px-1.5 py-[1px] text-[10.5px] font-medium {{ status_badge_class(incident.status) }}">
-            {{ status_label(incident.status) }}
-          </span>
+        <div class="px-2.5 pb-1.5 text-[10.5px] font-bold uppercase tracking-wider text-ink-500">Huidig incident</div>
+        <div class="rounded-md bg-white/[0.04] border border-white/[0.06] px-3 py-2.5">
+          <div class="flex items-center gap-2">
+            <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded {{ incident_type_badge_class(incident.incident_type) }}">
+              {{ icons.icon('map-pin', 'w-3.5 h-3.5') }}
+            </span>
+            <div class="text-[12.5px] font-semibold text-white leading-snug min-w-0 truncate">{{ incident.location }}</div>
+          </div>
+          <div class="text-[11px] text-ink-500 mt-1.5 ml-8 tabular">{{ incident.date|nl_date }}</div>
+          <div class="flex items-center flex-wrap gap-1.5 mt-1.5 ml-8">
+            <span class="text-[10.5px] font-medium text-ink-300">{{ incident.incident_type.value }}</span>
+            <span class="inline-flex items-center rounded px-1.5 py-[2px] text-[10.5px] font-medium {{ status_badge_class(incident.status) }}">
+              {{ status_label(incident.status) }}
+            </span>
+          </div>
         </div>
       </div>
 
       <nav class="px-3 pt-4 space-y-0.5">
-        <div class="px-2.5 pb-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-ink-500">Werkstroom</div>
+        <div class="px-2.5 pb-1.5 text-[10.5px] font-bold uppercase tracking-wider text-ink-500">Workflow</div>
         <a href="/incidents/{{ incident.id }}/sources"
-           class="flex items-center gap-2.5 rounded-md px-2.5 py-[7px] text-[13px] font-medium transition
-                  {{ 'bg-white/[0.07] text-white' if active_nav == 'sources' else 'text-ink-400 hover:bg-white/[0.04] hover:text-ink-100' }}">
+           class="flex items-center gap-2.5 rounded-md pl-[9px] pr-2.5 py-[7px] text-[13px] font-medium border-l-2 transition
+                  {{ 'border-accent-400 bg-white/[0.07] text-white' if active_nav == 'sources' else 'border-transparent text-ink-400 hover:bg-white/[0.04] hover:text-ink-100' }}">
           {{ icons.icon('upload', 'w-[15px] h-[15px]') }}
           Bronnen
         </a>
         <a href="/incidents/{{ incident.id }}/analysis"
-           class="flex items-center gap-2.5 rounded-md px-2.5 py-[7px] text-[13px] font-medium transition
-                  {{ 'bg-white/[0.07] text-white' if active_nav == 'analysis' else 'text-ink-400 hover:bg-white/[0.04] hover:text-ink-100' }}">
+           class="flex items-center gap-2.5 rounded-md pl-[9px] pr-2.5 py-[7px] text-[13px] font-medium border-l-2 transition
+                  {{ 'border-accent-400 bg-white/[0.07] text-white' if active_nav == 'analysis' else 'border-transparent text-ink-400 hover:bg-white/[0.04] hover:text-ink-100' }}">
           {{ icons.icon('chart', 'w-[15px] h-[15px]') }}
           Analyse
         </a>
         <a href="/incidents/{{ incident.id }}/aar"
-           class="flex items-center gap-2.5 rounded-md px-2.5 py-[7px] text-[13px] font-medium transition
-                  {{ 'bg-white/[0.07] text-white' if active_nav == 'aar' else 'text-ink-400 hover:bg-white/[0.04] hover:text-ink-100' }}">
+           class="flex items-center gap-2.5 rounded-md pl-[9px] pr-2.5 py-[7px] text-[13px] font-medium border-l-2 transition
+                  {{ 'border-accent-400 bg-white/[0.07] text-white' if active_nav == 'aar' else 'border-transparent text-ink-400 hover:bg-white/[0.04] hover:text-ink-100' }}">
           {{ icons.icon('chat', 'w-[15px] h-[15px]') }}
           Interactieve AAR
         </a>
         <a href="/incidents/{{ incident.id }}/final"
-           class="flex items-center gap-2.5 rounded-md px-2.5 py-[7px] text-[13px] font-medium transition
-                  {{ 'bg-white/[0.07] text-white' if active_nav == 'final' else 'text-ink-400 hover:bg-white/[0.04] hover:text-ink-100' }}">
+           class="flex items-center gap-2.5 rounded-md pl-[9px] pr-2.5 py-[7px] text-[13px] font-medium border-l-2 transition
+                  {{ 'border-accent-400 bg-white/[0.07] text-white' if active_nav == 'final' else 'border-transparent text-ink-400 hover:bg-white/[0.04] hover:text-ink-100' }}">
           {{ icons.icon('document', 'w-[15px] h-[15px]') }}
           Definitieve AAR
         </a>

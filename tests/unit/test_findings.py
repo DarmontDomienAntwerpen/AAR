@@ -1,13 +1,29 @@
 from aar.analysis.findings import run_findings
+from aar.llm.base import LLMProvider
 from aar.llm.mock import MockLLMProvider
 from aar.models import (
     CreatedBy,
+    DiscussionOrigin,
     DiscussionPoint,
     Observation,
     ObservationCategory,
     ObservationType,
     PositiveFinding,
 )
+from aar.schemas.findings import FindingsOutput
+
+
+class _EmptyFindingsProvider(LLMProvider):
+    """Stands in for a real LLM that (as seen in practice) sometimes returns
+    no discussion_points at all even when the data clearly contains
+    assumption/uncertainty observations — used to test the deterministic
+    fallback in run_findings, independent of the mock provider (which
+    already covers every such observation itself, so never exercises it)."""
+
+    def _complete(self, *, system_prompt, user_prompt, schema, attempt, previous_error):
+        import json
+
+        return json.dumps(FindingsOutput().model_dump(mode="json"))
 
 
 def _add_observation(session, incident, content, category, obs_type):
@@ -94,3 +110,20 @@ def test_run_findings_ai_observation_created_with_multiple_sources(session, samp
     )
     assert len(ai_observations) == 1
     assert ai_observations[0].commander_report_id is None
+
+
+def test_run_findings_adds_fallback_when_llm_misses_a_flagged_observation(session, sample_incident):
+    obs = _add_observation(
+        session, sample_incident, "Ik ging ervan uit dat de achterzijde gecontroleerd was.",
+        ObservationCategory.OTHER, ObservationType.ASSUMPTION,
+    )
+
+    result = run_findings(session, sample_incident, _EmptyFindingsProvider())
+
+    assert result.discussion_points == []  # the "LLM" really did return nothing
+
+    discussion_points = session.query(DiscussionPoint).filter_by(incident_id=sample_incident.id).all()
+    assert len(discussion_points) == 1
+    assert discussion_points[0].observation_ids == [obs.id]
+    assert discussion_points[0].origin_category == DiscussionOrigin.ASSUMPTION
+    assert discussion_points[0].is_human_added is False

@@ -1,0 +1,33 @@
+{% import "_components.html" as c %}
+{% import "_icons.html" as icons %}
+
+<h2 class="text-[13px] font-semibold text-ink-900 mb-1">Extra opmerkingen per bevelvoerder</h2>
+<p class="text-[11.5px] text-slate-500 mb-4">Rechtstreeks overgenomen uit "Overige opmerkingen" in het formulier — geen AI-selectie, gewoon wat elke bevelvoerder zelf toevoegde.</p>
+
+{% if not other_notes_by_commander %}
+  {{ c.empty_state("Geen extra opmerkingen ingevuld.") }}
+{% else %}
+
+{% for report, obs_list in other_notes_by_commander %}
+<div class="mb-5">
+  <div class="flex items-center gap-2 mb-2">
+    <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-ink-900 text-white text-[11px] font-mono font-bold">
+      {{ report.callsign[:3] if report.callsign else "?" }}
+    </span>
+    <span class="text-[13.5px] font-semibold text-ink-900">{{ report.rank }} {{ report.surname }}</span>
+    <span class="text-[12px] font-semibold text-slate-600">{{ report.callsign }}</span>
+  </div>
+  <div class="rounded-md border border-slate-200 bg-slate-50/60 p-4">
+    <ul class="space-y-1.5">
+      {% for o in obs_list %}
+      <li class="text-[13px] text-slate-700 leading-snug flex items-start gap-1.5">
+        <span class="text-slate-400 mt-[1px]">&bull;</span>
+        <span class="flex-1">{{ o.content }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+{% endfor %}
+
+{% endif %}

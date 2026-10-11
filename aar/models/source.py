@@ -16,6 +16,12 @@ class SourceDocument(Base):
     and optionally pin to a specific incident moment."""
 
     __tablename__ = "source_documents"
+    # Without this, SQLite reuses a deleted row's id for the next insert
+    # when that row held the table's highest id — a freshly-uploaded photo
+    # could land on the same doc_id an earlier, deleted photo had, and a
+    # browser could then serve that old photo from its own cache for the
+    # /media/{doc_id} URL. AUTOINCREMENT guarantees ids are never reused.
+    __table_args__ = {"sqlite_autoincrement": True}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     incident_id: Mapped[int] = mapped_column(ForeignKey("incidents.id"), nullable=False)
@@ -32,15 +38,30 @@ class SourceDocument(Base):
     parse_error: Mapped[str | None] = mapped_column(Text, nullable=True)
     caption: Mapped[str] = mapped_column(Text, default="")
     event_id: Mapped[int | None] = mapped_column(ForeignKey("incident_events.id"), nullable=True)
+    # For PHOTO_OR_PLAN documents only: optionally pin a photo to a specific
+    # commander's own account (shown in their "Waarnemingen & acties"
+    # overlay) — independent of event_id, a photo can be linked to a moment,
+    # a commander, both, or neither. Not to be confused with the *other*
+    # `commander_report` relationship below, which is the 1:1 link for
+    # COMMANDER_REPORT-type documents (the report file itself).
+    linked_commander_report_id: Mapped[int | None] = mapped_column(
+        ForeignKey("commander_reports.id"), nullable=True
+    )
 
     incident: Mapped["Incident"] = relationship(back_populates="source_documents")
     commander_report: Mapped["CommanderReport | None"] = relationship(
-        back_populates="source_document", uselist=False, cascade="all, delete-orphan"
+        back_populates="source_document",
+        uselist=False,
+        cascade="all, delete-orphan",
+        foreign_keys="CommanderReport.source_document_id",
     )
     dispatch_records: Mapped[list["DispatchRecord"]] = relationship(
         back_populates="source_document", cascade="all, delete-orphan"
     )
     event: Mapped["IncidentEvent | None"] = relationship()
+    linked_commander_report: Mapped["CommanderReport | None"] = relationship(
+        foreign_keys=[linked_commander_report_id]
+    )
 
 
 class CommanderReport(Base):
@@ -78,7 +99,9 @@ class CommanderReport(Base):
     facilitator_notes: Mapped[str] = mapped_column(Text, default="")
 
     incident: Mapped["Incident"] = relationship(back_populates="commander_reports")
-    source_document: Mapped["SourceDocument"] = relationship(back_populates="commander_report")
+    source_document: Mapped["SourceDocument"] = relationship(
+        back_populates="commander_report", foreign_keys=[source_document_id]
+    )
     observations: Mapped[list["Observation"]] = relationship(back_populates="commander_report")
 
     @property
@@ -92,7 +115,7 @@ class CommanderReport(Base):
         tail = f"{rank} {surname}".strip()
         if head and tail:
             return f"{head} — {tail}"
-        return head or tail or f"Commandant #{self.id}"
+        return head or tail or f"Bevelvoerder #{self.id}"
 
 
 class DispatchRecord(Base):

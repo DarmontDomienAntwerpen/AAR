@@ -4,10 +4,10 @@
 {% block title %}Analyse{% endblock %}
 {% block content %}
 
-{{ c.page_header("Analyse", "Start de AI-pijplijn: extractie, reconstructie, dispatchkoppeling, bevindingen en leerpunten.") }}
+{{ c.page_header("Analyse", "Start de AI-pijplijn.") }}
 
 {% if n_reports == 0 %}
-  {{ c.empty_state("Er zijn nog geen commandantenverslagen geüpload.") }}
+  {{ c.empty_state("Er zijn nog geen bevelvoerdersverslagen geüpload.") }}
 {% else %}
 
 <div class="rounded-[13px] border border-slate-200 bg-white shadow-card p-6">
@@ -39,9 +39,10 @@
     <div class="text-sm text-slate-500 mb-4">Nog geen analyse uitgevoerd voor dit incident.</div>
   {% endif %}
 
-  <form method="post" action="/incidents/{{ incident.id }}/analysis/run" class="mt-5 pt-5 border-t border-slate-100">
+  <form method="post" action="/incidents/{{ incident.id }}/analysis/run" class="mt-5 pt-5 border-t border-slate-100"
+        onsubmit="this.querySelector('button').disabled=true; this.querySelector('button').textContent='Analyse loopt... (kan een minuut duren)';">
     <button type="submit"
-            class="inline-flex items-center gap-2 rounded-lg {{ 'bg-ink-900 text-white hover:bg-ink-800' if not run else 'border border-slate-300 text-slate-700 hover:bg-slate-50' }} px-4 py-2.5 text-sm font-semibold shadow-sm transition">
+            class="inline-flex items-center gap-2 rounded-lg {{ 'bg-ink-900 text-white hover:bg-ink-800' if not run else 'border border-slate-300 text-slate-700 hover:bg-slate-50' }} px-4 py-2.5 text-sm font-semibold shadow-sm transition disabled:opacity-60 disabled:cursor-not-allowed">
       {{ icons.icon('sparkle', 'w-4 h-4') }}
       Analyse {{ "opnieuw " if run else "" }}uitvoeren
     </button>

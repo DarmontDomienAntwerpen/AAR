@@ -43,7 +43,7 @@ BELANGRIJK voor description: schrijf een ECHTE synthese van 1-2 korte \
 zinnen die zegt WAT er precies onzeker/het thema was over alle {N} gevallen \
 heen — niet alleen dát het N keer voorkwam, maar WAAROVER (bv. "Onzeker \
 over exact aantal en locatie van slachtoffers bij aanvang, bij meerdere \
-commandanten." — niet "Dit kwam 7x voor."). Plak NOOIT de losse \
+bevelvoerders." — niet "Dit kwam 7x voor."). Plak NOOIT de losse \
 bespreekpunt-beschrijvingen achter elkaar met puntkomma's — dat is geen \
 synthese, dat is een opsomming, en dat is precies wat dit veld niet mag \
 zijn. Wie de individuele gevallen wil zien klikt door naar de \
@@ -100,20 +100,38 @@ def run_lessons(session: Session, incident: Incident, provider: LLMProvider) -> 
     session.query(Improvement).filter_by(incident_id=incident.id, is_human_added=False).delete()
     session.flush()
 
+    # Deterministic dedup: a "lesson" clustering only one discussion point
+    # is just that discussion point restated under a new heading — the
+    # addendum above already asks the LLM not to do this ("niet één
+    # bijna-identiek leerpunt per bespreekpunt"), but it doesn't always
+    # comply. Rather than keep re-tuning the prompt, only keep lessons that
+    # genuinely synthesise 2+ discussion points; a singleton theme is
+    # already fully visible on the Te bespreken tab, so a separate lesson
+    # for it adds nothing but a near-duplicate entry.
+    skipped_singleton_lessons = 0
     lesson_ids_by_title: dict[str, int] = {}
     for lesson in result.lessons:
+        resolved_dp_ids = [dp_ids_by_title[t] for t in lesson.discussion_point_titles if t in dp_ids_by_title]
+        if len(resolved_dp_ids) < 2:
+            skipped_singleton_lessons += 1
+            continue
         row = Lesson(
             incident_id=incident.id,
             title=lesson.title,
             description=lesson.description,
-            discussion_point_ids=[
-                dp_ids_by_title[t] for t in lesson.discussion_point_titles if t in dp_ids_by_title
-            ],
+            discussion_point_ids=resolved_dp_ids,
             is_human_added=False,
         )
         session.add(row)
         session.flush()
         lesson_ids_by_title[lesson.title] = row.id
+    if skipped_singleton_lessons:
+        logger.info(
+            "Lessons for incident %s: skipped %d singleton lesson(s) clustering only 1 "
+            "discussion point (already visible there directly).",
+            incident.id,
+            skipped_singleton_lessons,
+        )
 
     for improvement in result.improvements:
         session.add(

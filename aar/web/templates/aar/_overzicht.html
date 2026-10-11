@@ -1,26 +1,36 @@
 {% import "_icons.html" as icons %}
 
 <div class="rounded-[13px] border border-slate-200 bg-white p-5 mb-5 shadow-card">
-  <div class="flex items-center justify-between mb-3.5">
-    <h2 class="text-[13px] font-semibold text-ink-900">Incidentgegevens</h2>
-  </div>
-  <dl class="grid grid-cols-4 gap-3.5 text-[13px]">
-    <div><dt class="text-[11px] uppercase tracking-wide text-slate-400">Datum</dt><dd class="mt-0.5 font-medium text-slate-800 tabular">{{ incident.date|nl_date }}</dd></div>
-    <div><dt class="text-[11px] uppercase tracking-wide text-slate-400">Type</dt><dd class="mt-0.5 font-medium text-slate-800">{{ incident.incident_type.value }}</dd></div>
-    <div class="col-span-2">
-      <dt class="text-[11px] uppercase tracking-wide text-slate-400">Locatie</dt>
-      <dd class="mt-0.5">
-        <a href="{{ maps_url(incident.location) }}" target="_blank" rel="noopener"
-           class="inline-flex items-center gap-1.5 font-medium text-accent-700 hover:text-accent-800 hover:underline">
-          {{ incident.location }}
-          {{ icons.icon('map-pin', 'w-3.5 h-3.5 text-accent-400') }}
-        </a>
-      </dd>
+  <h2 class="flex items-center gap-1.5 text-[13px] font-semibold text-ink-900 mb-3.5">
+    {{ icons.icon('info', 'w-3.5 h-3.5 text-accent-500') }} Incidentgegevens
+  </h2>
+
+  <div class="flex items-center gap-3 pb-3.5 mb-3.5 border-b border-slate-100">
+    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-md {{ incident_type_badge_class(incident.incident_type) }}">
+      {{ icons.icon('map-pin', 'w-[18px] h-[18px]') }}
+    </span>
+    <div class="min-w-0 flex-1">
+      <a href="{{ maps_url(incident.location) }}" target="_blank" rel="noopener"
+         class="block text-[15px] font-semibold text-ink-900 hover:text-accent-700 hover:underline truncate">
+        {{ incident.location }}
+      </a>
+      <div class="text-[11.5px] text-slate-500 tabular mt-0.5">{{ incident.date|nl_date }}</div>
     </div>
-    {% if incident.description %}
-    <div class="col-span-4"><dt class="text-[11px] uppercase tracking-wide text-slate-400">Omschrijving</dt><dd class="mt-0.5 text-slate-600">{{ incident.description }}</dd></div>
-    {% endif %}
-  </dl>
+    <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11.5px] font-semibold shrink-0 {{ incident_type_badge_class(incident.incident_type) }}">
+      <span class="h-1.5 w-1.5 rounded-full {{ incident_type_dot_class(incident.incident_type) }}"></span>
+      {{ incident.incident_type.value }}
+    </span>
+  </div>
+
+  {% if incident.description %}
+  <div class="flex items-start gap-2.5 rounded-md bg-accent-50 border border-accent-100 px-3.5 py-3">
+    {{ icons.icon('flag', 'w-3.5 h-3.5 text-accent-600 shrink-0 mt-[2.5px]') }}
+    <div>
+      <p class="text-[10.5px] font-bold uppercase tracking-wide text-accent-700 mb-0.5">Eindbalans</p>
+      <p class="text-[13.5px] font-medium text-ink-900 leading-relaxed whitespace-pre-line">{{ incident.description }}</p>
+    </div>
+  </div>
+  {% endif %}
 
   <details class="mt-3.5 pt-3 border-t border-slate-100">
     <summary class="cursor-pointer text-[11.5px] font-medium text-slate-400 hover:text-slate-600 select-none">
@@ -47,56 +57,56 @@
                class="w-full rounded-md border border-slate-300 px-2.5 py-1.5 text-[12.5px] focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500">
       </div>
       <div class="col-span-4">
-        <label class="block text-[10.5px] font-medium text-slate-400 mb-0.5">Omschrijving</label>
-        <textarea name="description" rows="2"
+        <label class="block text-[10.5px] font-medium text-slate-400 mb-0.5">Omschrijving (eindbalans)</label>
+        <textarea name="description" rows="2" placeholder="Wat was er aan de hand, en wat was de eindbalans?"
                   class="w-full rounded-md border border-slate-300 px-2.5 py-1.5 text-[12.5px] leading-relaxed focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500">{{ incident.description }}</textarea>
       </div>
-      <div class="col-span-4">
+      <div class="col-span-4 flex items-center gap-2">
         <button type="submit" class="rounded-md border border-slate-300 px-3 py-1.5 text-[12px] font-semibold text-slate-700 hover:bg-slate-50 transition">
           Gegevens opslaan
         </button>
       </div>
     </form>
+    {% if incident.description %}
+    <form method="post" action="/incidents/{{ incident.id }}/aar/cleanup-description" class="mt-1.5 inline-block">
+      <button type="submit" class="inline-flex items-center gap-1.5 rounded-md bg-indigo-50 border border-indigo-200 px-3 py-1.5 text-[12px] font-semibold text-indigo-700 hover:bg-indigo-100 transition">
+        {{ icons.icon('sparkle', 'w-3.5 h-3.5') }} AI opschonen
+      </button>
+    </form>
+    {% endif %}
   </details>
 </div>
 
 <div class="grid grid-cols-3 gap-5">
   <div class="col-span-2 space-y-5">
-    <div class="rounded-[13px] border border-slate-200 border-l-[3px] border-l-accent-600 bg-white p-5 shadow-card">
-      <div class="flex items-start gap-3">
-        <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent-100 text-accent-700">
-          {{ icons.icon('phone', 'w-4 h-4') }}
-        </span>
-        <div class="flex-1 min-w-0">
-          <h2 class="text-[13px] font-semibold text-ink-900 mb-1">Initiële oproep</h2>
-          <p class="text-[11.5px] text-slate-500 mb-3">Wat kregen we mee bij de eerste melding? Wordt vooraan bij de situatieschets getoond.</p>
-          <form method="post" action="/incidents/{{ incident.id }}/aar/initial-call-notes">
-            <textarea name="text" rows="3" placeholder="bv. Melding van rookontwikkeling in woning, mogelijk bewoner aanwezig..."
-                      class="w-full rounded-md border border-slate-300 px-3 py-2.5 text-[13px] leading-relaxed focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500">{{ incident.initial_call_notes }}</textarea>
-            <button type="submit" class="mt-3 rounded-md border border-slate-300 px-3.5 py-2 text-[13px] font-semibold text-slate-700 hover:bg-slate-50 transition">
-              Oproepgegevens opslaan
-            </button>
-          </form>
-        </div>
-      </div>
-    </div>
-
     <div class="rounded-[13px] border border-slate-200 bg-white p-5 shadow-card">
       <div class="flex items-center justify-between mb-3.5">
-        <h2 class="text-[13px] font-semibold text-ink-900">Situatie</h2>
+        <h2 class="flex items-center gap-1.5 text-[13px] font-semibold text-ink-900">
+          {{ icons.icon('map-pin', 'w-3.5 h-3.5 text-accent-500') }} Situatie
+        </h2>
         <span class="text-[10.5px] font-medium uppercase tracking-wide text-slate-400">Samengevat door AI &middot; volledig te lezen</span>
       </div>
 
-      <div class="rounded-md bg-slate-50/70 border border-slate-100 px-4 py-3.5 text-[13.5px] leading-relaxed text-slate-700 whitespace-pre-line">
-        {% if incident.initial_call_notes %}
-        <p class="mb-2"><span class="font-semibold text-ink-900">De initiële oproep en info was:</span> {{ incident.initial_call_notes }}</p>
-        {% endif %}
-        {% if default_summary %}
-        {{ default_summary }}
-        {% else %}
-        <span class="text-slate-400 italic">Nog geen situatiesamenvatting beschikbaar.</span>
-        {% endif %}
+      {% if incident.initial_call_notes %}
+      <div class="flex items-start gap-2.5 rounded-md bg-rose-50 border border-rose-100 px-3.5 py-3 mb-3">
+        {{ icons.icon('phone', 'w-3.5 h-3.5 text-rose-500 shrink-0 mt-[2.5px]') }}
+        <div>
+          <p class="text-[10.5px] font-semibold uppercase tracking-wide text-rose-600 mb-0.5">Initiële oproep en info</p>
+          <p class="text-[13px] text-rose-900 leading-relaxed">{{ incident.initial_call_notes }}</p>
+        </div>
       </div>
+      {% endif %}
+
+      {% if default_summary %}
+      <div class="rounded-md border border-slate-200 border-l-[3px] border-l-accent-600 px-4 py-3.5 text-[13.5px] leading-relaxed text-slate-700 whitespace-pre-line">
+        <p class="text-[10.5px] font-bold uppercase tracking-wide text-accent-600 mb-1.5">Verslag</p>
+        {{ default_summary }}
+      </div>
+      {% else %}
+      <div class="rounded-md bg-slate-50/70 border border-slate-100 px-4 py-3.5 text-[13px]">
+        <span class="text-slate-400 italic">Nog geen situatiesamenvatting beschikbaar.</span>
+      </div>
+      {% endif %}
 
       <details class="mt-3">
         <summary class="cursor-pointer text-[11.5px] font-medium text-slate-400 hover:text-slate-600 select-none">
@@ -116,11 +126,21 @@
   <div class="space-y-5">
     <div class="rounded-[13px] border border-slate-200 bg-white p-5 shadow-card">
       <div class="flex items-center justify-between mb-3">
-        <h2 class="text-[13px] font-semibold text-ink-900">Beeldmateriaal</h2>
-        <a href="/incidents/{{ incident.id }}/sources" title="Foto of plan toevoegen"
-           class="flex h-6 w-6 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition">
-          {{ icons.icon('plus', 'w-3.5 h-3.5') }}
-        </a>
+        <h2 class="flex items-center gap-1.5 text-[13px] font-semibold text-ink-900">
+          {{ icons.icon('image', 'w-3.5 h-3.5 text-accent-500') }} Beeldmateriaal
+        </h2>
+        <details class="relative">
+          <summary title="Foto of plan toevoegen" class="flex h-6 w-6 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition cursor-pointer list-none">
+            {{ icons.icon('plus', 'w-3.5 h-3.5') }}
+          </summary>
+          <form method="post" action="/incidents/{{ incident.id }}/sources/photos" enctype="multipart/form-data"
+                class="absolute right-0 top-7 z-10 w-64 rounded-md border border-slate-200 bg-white p-3 shadow-lg space-y-2">
+            <input type="hidden" name="redirect_to" value="/incidents/{{ incident.id }}/aar?tab=overzicht">
+            <input type="file" name="files" multiple accept=".jpg,.jpeg,.png,.webp,.pdf" required
+                   class="w-full text-[11.5px] text-slate-600 file:mr-2 file:rounded file:border-0 file:bg-slate-100 file:px-2 file:py-1 file:text-[11px] file:font-medium file:text-slate-700 hover:file:bg-slate-200">
+            <button type="submit" class="w-full rounded-md bg-slate-800 px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-slate-900 transition">Toevoegen</button>
+          </form>
+        </details>
       </div>
       {% if not photos %}
       <div class="rounded-md border border-dashed border-slate-300 bg-slate-50/60 px-4 py-4 text-center text-[11.5px] text-slate-500">
@@ -166,8 +186,9 @@
     <div class="rounded-[13px] border border-slate-200 bg-white p-5 shadow-card">
       <h2 class="text-[13px] font-semibold text-ink-900 mb-1.5">Heranalyse</h2>
       <p class="text-[11.5px] text-slate-500 mb-3.5">Voer dit uit nadat u correcties heeft toegevoegd, zodat de AI-analyse hiermee rekening houdt.</p>
-      <form method="post" action="/incidents/{{ incident.id }}/aar/reanalyze">
-        <button type="submit" class="w-full inline-flex items-center justify-center gap-1.5 rounded-md border border-slate-300 px-3.5 py-2 text-[13px] font-semibold text-slate-700 hover:bg-slate-50 transition">
+      <form method="post" action="/incidents/{{ incident.id }}/aar/reanalyze"
+            onsubmit="this.querySelector('button').disabled=true; this.querySelector('button').textContent='Analyse loopt... (kan een minuut duren)';">
+        <button type="submit" class="w-full inline-flex items-center justify-center gap-1.5 rounded-md border border-slate-300 px-3.5 py-2 text-[13px] font-semibold text-slate-700 hover:bg-slate-50 transition disabled:opacity-60 disabled:cursor-not-allowed">
           {{ icons.icon('sparkle', 'w-3.5 h-3.5') }}
           Analyse opnieuw uitvoeren
         </button>

@@ -74,6 +74,11 @@ def _cell(row: pd.Series, col: str) -> str:
     value = row.get(col)
     if value is None or (isinstance(value, float) and pd.isna(value)):
         return ""
+    if isinstance(value, float) and value.is_integer():
+        # A callsign like "110" typed into a Google Form numeric-looking
+        # question comes back from pandas as 110.0 — show it the way a
+        # human typed it, not with a spurious ".0".
+        return str(int(value))
     return str(value).strip()
 
 
@@ -200,8 +205,13 @@ def parse_commander_report_sheet(
             row_warnings.append("niet alle identificatievelden zijn ingevuld.")
         if not actions_text:
             row_warnings.append("geen acties ingevuld.")
-        for key in sections:
-            if key != "actions" and not sections[key]:
+        for key in section_cols:
+            # Only flag a section as "leeg" when the form actually has a
+            # question for it and the respondent left it blank — not for
+            # sections the form never asked in the first place (no matching
+            # column found at all), which would otherwise warn on every
+            # single row forever.
+            if not sections[key]:
                 row_warnings.append(f"'{key}' is leeg.")
 
         reports.append(

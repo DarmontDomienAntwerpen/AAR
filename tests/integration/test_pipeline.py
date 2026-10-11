@@ -4,10 +4,10 @@ from aar.models import (
     AnalysisRunStatus,
     CommanderReport,
     DiscussionPoint,
+    Improvement,
     Incident,
     IncidentEvent,
     IncidentStatus,
-    Lesson,
     Observation,
     SourceDocument,
     SourceDocumentType,
@@ -72,7 +72,12 @@ def test_full_pipeline_end_to_end(session, sample_incident):
     assert session.query(Observation).filter_by(incident_id=sample_incident.id).count() > 0
     assert session.query(IncidentEvent).filter_by(incident_id=sample_incident.id).count() > 0
     assert session.query(DiscussionPoint).filter_by(incident_id=sample_incident.id).count() > 0
-    assert session.query(Lesson).filter_by(incident_id=sample_incident.id).count() > 0
+    # Not asserting on Lesson count here: a lesson clustering only 1
+    # discussion point is deliberately suppressed (near-duplicate of that
+    # point — see run_lessons), so with this fixture's small, thematically
+    # scattered discussion points, 0 lessons can be the correct outcome.
+    # Improvements still get created either way (see test_lessons.py).
+    assert session.query(Improvement).filter_by(incident_id=sample_incident.id).count() > 0
 
     # Absolute time rule: no event may have a fabricated exact time (no
     # matching dispatch data was provided in this fixture at all).
@@ -124,7 +129,7 @@ def test_pipeline_records_error_and_preserves_earlier_stage_progress_on_mid_run_
 def test_pipeline_fails_cleanly_with_no_reports(session, sample_incident):
     run = run_analysis(session, sample_incident, MockLLMProvider())
     assert run.status == AnalysisRunStatus.ERROR
-    assert "commandantenverslagen" in run.error_message.lower()
+    assert "bevelvoerdersverslagen" in run.error_message.lower()
 
     incident = session.get(Incident, sample_incident.id)
     assert incident.status != IncidentStatus.ANALYZED

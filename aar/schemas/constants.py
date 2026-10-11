@@ -49,61 +49,63 @@ CATEGORY_LABELS_NL: dict[ObservationCategory, str] = {
 
 # Which observation categories are decision-relevant enough to belong in a
 # *short* situation overview (used by both the deterministic fallback
-# summary and Stage 7 narrative synthesis input). Deliberately excludes the
-# more granular/procedural categories (raw observations, available/missing
-# information, assessment, narrative action, general remarks) — those stay
-# fully visible on "Waarnemingen & acties" and the Incidentverloop tab, just
-# not repeated in the short overview.
+# summary and Stage 7 narrative synthesis input). Strictly the factual arc —
+# waarnemingen -> acties -> resultaten (-> doelstelling) — nothing else.
+# Deliberately excludes went_well/went_less_well: those are evaluative, not
+# factual, and already have their own tab ("Positieve punten" /
+# "Te bespreken") — repeating them here would blur "wat gebeurde er" with
+# "hoe vond men dat het ging". Also excludes the more granular/procedural
+# categories (raw observations, available/missing information, assessment,
+# narrative action, general remarks) — those stay fully visible on
+# "Waarnemingen & acties" and the Incidentverloop tab, just not repeated here.
 CRUCIAL_SUMMARY_CATEGORIES: set[ObservationCategory] = {
     ObservationCategory.OBSERVATION,
     ObservationCategory.ACTION,
     ObservationCategory.DECISION,
     ObservationCategory.RESULT,
     ObservationCategory.OBJECTIVE,
-    ObservationCategory.WENT_WELL,
-    ObservationCategory.WENT_LESS_WELL,
 }
 
-# Broader thematic grouping for "Waarnemingen & acties": the 12 raw
-# categories are too fine-grained to read as one story — group into the
-# narrative arc a commander's account naturally follows (what I saw/knew →
-# what I decided → what I did → what happened → how it went), rendered
-# top-to-bottom in a single column so reading order == chronological order.
-# Wat ging goed / minder goed stay their own groups (not folded into a
-# generic "evaluation" bucket) so the existing green/red distinction isn't lost.
-CATEGORY_SUPERGROUP: dict[ObservationCategory, str] = {
-    ObservationCategory.OBSERVATION: "feiten",
-    ObservationCategory.INFORMATION_AVAILABLE: "feiten",
-    ObservationCategory.INFORMATION_MISSING: "feiten",
-    ObservationCategory.ASSESSMENT: "inschatting",
-    ObservationCategory.DECISION: "inschatting",
-    ObservationCategory.OBJECTIVE: "inschatting",
-    ObservationCategory.ACTION: "acties",
-    ObservationCategory.RESULT: "resultaat",
-    ObservationCategory.WENT_WELL: "goed",
-    ObservationCategory.WENT_LESS_WELL: "minder_goed",
-    ObservationCategory.WHY: "overig",
-    ObservationCategory.OTHER: "overig",
+# "Waarnemingen & acties" groups by the form's own literal sections
+# (Observation.source_section — set at extraction time, see
+# aar.schemas.extraction.ExtractedItem), not by inferred category: a
+# sentence from "Overige opmerkingen" that reads like an assessment still
+# needs to display under Overige opmerkingen, not get pulled into a
+# different topic box just because of its semantic content.
+# CATEGORY_TO_SECTION_FALLBACK is only for observations predating the
+# source_section field (nullable, old rows) — a best-effort guess so they
+# still render somewhere sensible instead of vanishing.
+CATEGORY_TO_SECTION_FALLBACK: dict[ObservationCategory, str] = {
+    ObservationCategory.OBSERVATION: "situation",
+    ObservationCategory.INFORMATION_AVAILABLE: "situation",
+    ObservationCategory.INFORMATION_MISSING: "situation",
+    ObservationCategory.ACTION: "actions",
+    ObservationCategory.DECISION: "actions",
+    ObservationCategory.RESULT: "actions",
+    ObservationCategory.OBJECTIVE: "actions",
+    ObservationCategory.ASSESSMENT: "actions",
+    ObservationCategory.WENT_WELL: "went_well",
+    ObservationCategory.WENT_LESS_WELL: "went_less_well",
+    ObservationCategory.WHY: "other",
+    ObservationCategory.OTHER: "other",
 }
 
-SUPERGROUP_LABELS_NL: dict[str, str] = {
-    "feiten": "Feiten & informatie",
-    "inschatting": "Inschatting & beslissing",
-    "acties": "Acties",
-    "resultaat": "Resultaat",
-    "goed": "Wat ging goed",
-    "minder_goed": "Wat ging minder goed",
-    "overig": "Verklaring & overig",
+SECTION_LABELS_NL: dict[str, str] = {
+    "situation": "Feiten bij aankomst",
+    "actions": "Acties",
+    "went_well": "Wat ging goed",
+    "went_less_well": "Wat kon beter",
+    "other": "Overige opmerkingen",
+    "difficulties": "Problemen of moeilijkheden",
 }
 
-SUPERGROUP_ORDER: dict[str, int] = {
-    "feiten": 1,
-    "inschatting": 2,
-    "acties": 3,
-    "resultaat": 4,
-    "goed": 5,
-    "minder_goed": 6,
-    "overig": 7,
+SECTION_ORDER: dict[str, int] = {
+    "situation": 1,
+    "actions": 2,
+    "went_well": 3,
+    "went_less_well": 4,
+    "other": 5,
+    "difficulties": 6,
 }
 
 CATEGORY_ORDER: dict[ObservationCategory, int] = {
@@ -158,5 +160,32 @@ UNIT_NAME_ALIASES: dict[str, str] = {
     "1hplo": "1H PLO",
     "1h plo": "1H PLO",
     "eerste hulp plo": "1H PLO",
+    "1ste hulp linkeroever": "1H PLO",
+    "eerste hulp linkeroever": "1H PLO",
+    "1hpc": "1H PC",
+    "1h pc": "1H PC",
+    "1h post centraal": "1H PC",
+    "1ste hulp post centraal": "1H PC",
+    "eerste hulp post centraal": "1H PC",
+    "1hpn": "1H PN",
+    "1h pn": "1H PN",
+    "1hpz": "1H PZ",
+    "1h pz": "1H PZ",
+    "1hpli": "1H PLI",
+    "1h pli": "1H PLI",
+    "1hpw": "1H PW",
+    "1h pw": "1H PW",
+    "1hpbe": "1H PBE",
+    "1h pbe": "1H PBE",
+    "1hpd": "1H PD",
+    "1h pd": "1H PD",
+    "com1": "COM 1",
+    "com 1": "COM 1",
+    "commandowagen1": "COM 1",
+    "commandowagen 1": "COM 1",
+    "com2": "COM 2",
+    "com 2": "COM 2",
+    "commandowagen2": "COM 2",
+    "commandowagen 2": "COM 2",
 }
 CALLSIGN_ALIASES: dict[str, str] = {}

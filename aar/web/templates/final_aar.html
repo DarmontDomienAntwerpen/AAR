@@ -4,26 +4,58 @@
 {% block title %}Definitieve AAR{% endblock %}
 {% block content %}
 
-<div class="flex items-center justify-between mb-7">
-  <div>
-    <h1 class="text-[22px] font-bold text-ink-900 tracking-[-0.01em]">Definitieve AAR</h1>
-    <p class="mt-1 text-[13px] text-slate-500">
-      <a href="{{ maps_url(incident.location) }}" target="_blank" rel="noopener" class="text-accent-700 hover:text-accent-800 hover:underline">{{ incident.location }}</a>
-      &middot; {{ incident.date|nl_date }} &middot; {{ incident.incident_type.value }}
-    </p>
+<div class="relative overflow-hidden rounded-[16px] border border-slate-200 bg-white shadow-card mb-7">
+  <div class="h-[5px] {{ incident_type_dot_class(incident.incident_type) }}"></div>
+  <div class="p-6 flex items-start justify-between gap-4 flex-wrap">
+    <div class="flex items-start gap-4 min-w-0">
+      <span class="flex h-14 w-14 shrink-0 items-center justify-center rounded-[12px] {{ incident_type_badge_class(incident.incident_type) }}">
+        {{ icons.icon('map-pin', 'w-7 h-7') }}
+      </span>
+      <div class="min-w-0">
+        <p class="text-[10.5px] font-bold uppercase tracking-wider text-slate-400 mb-1">Definitieve AAR</p>
+        <h1 class="text-[23px] font-bold text-ink-900 tracking-[-0.01em] leading-tight truncate">
+          <a href="{{ maps_url(incident.location) }}" target="_blank" rel="noopener" class="hover:text-accent-700 hover:underline">{{ incident.location }}</a>
+        </h1>
+        <div class="flex items-center flex-wrap gap-2 mt-2.5">
+          <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11.5px] font-semibold {{ incident_type_badge_class(incident.incident_type) }}">
+            <span class="h-1.5 w-1.5 rounded-full {{ incident_type_dot_class(incident.incident_type) }}"></span>
+            {{ incident.incident_type.value }}
+          </span>
+          <span class="text-[13px] text-slate-500 tabular">{{ incident.date|nl_date }}</span>
+        </div>
+      </div>
+    </div>
+    {% if incident.status.value == "finalized" %}
+    <div class="flex items-center gap-2.5 shrink-0">
+      <span class="inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-[12.5px] font-semibold bg-emerald-50 text-emerald-700">
+        {{ icons.icon('check-circle', 'w-3.5 h-3.5') }} Afgerond
+      </span>
+      <form method="post" action="/incidents/{{ incident.id }}/final/reopen"
+            onsubmit="return confirm('AAR heropenen? Het incident wordt dan weer aanpasbaar (bewerkingen, heranalyse, nieuwe bronnen) totdat je opnieuw afrondt.');">
+        <button type="submit" class="inline-flex items-center gap-1.5 rounded-md border border-slate-300 px-3 py-2 text-[13px] font-semibold text-slate-700 hover:bg-slate-50 transition">
+          Heropenen
+        </button>
+      </form>
+    </div>
+    {% else %}
+    <form method="post" action="/incidents/{{ incident.id }}/final/finalize" class="shrink-0"
+          onsubmit="return confirm('AAR afronden en archiveren? Hierna kan er niets meer aangepast worden aan dit incident (geen bewerkingen, geen heranalyse, geen nieuwe bronnen).');">
+      <button type="submit" class="inline-flex items-center gap-1.5 rounded-md bg-ink-900 px-3.5 py-2 text-[13px] font-semibold text-white shadow-sm hover:bg-ink-800 transition">
+        {{ icons.icon('check-circle', 'w-3.5 h-3.5') }} AAR afronden
+      </button>
+    </form>
+    {% endif %}
   </div>
-  {% if incident.status.value == "finalized" %}
-  <span class="inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-[12.5px] font-semibold bg-emerald-50 text-emerald-700">
-    {{ icons.icon('check-circle', 'w-3.5 h-3.5') }} Afgerond
-  </span>
-  {% else %}
-  <form method="post" action="/incidents/{{ incident.id }}/final/finalize">
-    <button type="submit" class="inline-flex items-center gap-1.5 rounded-md bg-ink-900 px-3.5 py-2 text-[13px] font-semibold text-white shadow-sm hover:bg-ink-800 transition">
-      Markeer als afgerond
-    </button>
-  </form>
-  {% endif %}
 </div>
+
+{% if incident.status.value == "finalized" %}
+<div class="mb-6 flex items-center gap-2.5 rounded-[10px] border border-emerald-200 bg-emerald-50 px-4 py-3">
+  {{ icons.icon('check-circle', 'w-4 h-4 text-emerald-600 shrink-0') }}
+  <p class="text-[12.5px] text-emerald-800">
+    Deze AAR is afgerond en zit in het archief. Er kunnen geen aanpassingen meer gebeuren aan dit incident.
+  </p>
+</div>
+{% endif %}
 
 <div class="space-y-7 max-w-3xl">
   <section>
@@ -33,9 +65,13 @@
     <div class="rounded-[13px] border border-slate-200 border-l-[3px] border-l-accent-600 bg-white shadow-card p-5">
       <div class="text-[13px] leading-relaxed text-slate-700 whitespace-pre-line">
         {% if incident.initial_call_notes %}
-        <p class="mb-2.5"><span class="font-semibold text-ink-900">De initiële oproep en info was:</span> {{ incident.initial_call_notes }}</p>
+        <div class="rounded-md bg-rose-50 border border-rose-100 px-3.5 py-3 mb-2.5">
+          <p class="font-semibold text-rose-600 text-[10.5px] uppercase tracking-wide mb-1">Initiële oproep en info</p>
+          <p class="text-rose-900">{{ incident.initial_call_notes }}</p>
+        </div>
         {% endif %}
         {% if situation_summary %}
+        <p class="font-bold text-ink-900 mb-1">Verslag:</p>
         {{ situation_summary }}
         {% else %}
         <span class="text-slate-400">Nog geen situatiesamenvatting opgeslagen. Ga naar
@@ -120,7 +156,7 @@
       {% endfor %}
     </div>
     <p class="mt-2 text-[11.5px] text-slate-400">
-      Verschillende commandanten kunnen een verschillend perspectief geven op hetzelfde moment — dat wordt hier bewust apart getoond, niet samengevoegd tot één verhaal.
+      Verschillende bevelvoerders kunnen een verschillend perspectief geven op hetzelfde moment — dat wordt hier bewust apart getoond, niet samengevoegd tot één verhaal.
     </p>
     {% endif %}
   </section>

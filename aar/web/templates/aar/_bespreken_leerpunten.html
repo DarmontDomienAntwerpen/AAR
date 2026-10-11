@@ -1,78 +1,145 @@
 {% import "_components.html" as c %}
 {% import "_icons.html" as icons %}
 
-<section class="mb-9">
-  <h2 class="text-[13px] font-semibold text-ink-900 mb-3.5">Te bespreken</h2>
+<h2 class="text-[13px] font-semibold text-ink-900 mb-1">Te bespreken per bevelvoerder</h2>
+<p class="text-[11.5px] text-slate-500 mb-4">Vink af tijdens de bespreking.</p>
 
-  {% if not discussion_points %}
-    {{ c.empty_state("Nog geen bespreekpunten.") }}
-  {% endif %}
+{% if not discussion_points %}
+  {{ c.empty_state("Nog geen bespreekpunten.") }}
+{% else %}
 
-  <div class="grid grid-cols-2 gap-3.5 items-start">
-    {% for dp in discussion_points %}
-    {% set is_done = dp.discussed %}
-    <div class="rounded-[13px] border p-5 shadow-card
-                {{ 'border-emerald-200 bg-emerald-50/50' if is_done else 'border-amber-200 bg-amber-50/60' }}">
-      <div class="flex items-start justify-between gap-4 mb-2.5">
-        <div class="flex items-center gap-2 min-w-0">
-          <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md
-                       {{ 'bg-emerald-100 text-emerald-700' if is_done else 'bg-amber-100 text-amber-700' }}">
-            {{ icons.icon('warning', 'w-3.5 h-3.5') }}
-          </span>
-          <h3 class="text-[13.5px] font-bold truncate {{ 'text-emerald-900' if is_done else 'text-amber-900' }}">
-            {{ origin_label(dp.origin_category) }}
-          </h3>
-        </div>
-        <form method="post" action="/incidents/{{ incident.id }}/aar/discussion-points/{{ dp.id }}/delete"
-              onsubmit="return confirm('Dit bespreekpunt verwijderen?')">
-          <button type="submit" class="text-slate-300 hover:text-rose-600 transition shrink-0">{{ icons.icon('trash', 'w-4 h-4') }}</button>
-        </form>
-      </div>
-
-      <div class="flex flex-wrap items-center gap-1.5 mb-2.5">
-        {{ c.badge(confidence_label(dp.confidence_state), "slate") }}
-        {% if dp.is_human_added %}{{ c.badge("Door facilitator", "sky") }}{% endif %}
-      </div>
-
-      <div class="flex items-center justify-between gap-4 mb-2.5">
-        {{ c.attributed_to(dp.observation_ids, observations_by_id) }}
-        {% if dp.event %}
-        <span class="text-[11.5px] text-slate-400">Moment: {{ dp.event.title }}</span>
-        {% endif %}
-      </div>
-
-      <form method="post" action="/incidents/{{ incident.id }}/aar/discussion-points/{{ dp.id }}/update" class="space-y-2">
-        <input type="text" name="title" value="{{ dp.title }}" title="{{ dp.title }}"
-               class="w-full rounded-md border border-slate-200 bg-white/70 px-3 py-2 text-[13.5px] font-semibold text-ink-900 overflow-hidden text-ellipsis focus:border-accent-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-accent-500">
-        <textarea name="description" rows="5"
-                  class="w-full rounded-md border border-slate-200 bg-white/70 px-3 py-2 text-[13px] leading-relaxed text-slate-600 focus:border-accent-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-accent-500">{{ dp.description }}</textarea>
-        <button type="submit" class="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-[12px] font-semibold text-slate-700 hover:bg-slate-50 transition">
-          Opslaan
-        </button>
-      </form>
-
-      {{ c.evidence(dp.observation_ids, observations_by_id) }}
-
-      <div class="mt-3.5 pt-3.5 border-t {{ 'border-emerald-200/70' if is_done else 'border-amber-200/70' }} flex items-center justify-between">
-        <span class="text-[11.5px] font-semibold {{ 'text-emerald-700' if is_done else 'text-amber-700' }}">
-          {{ "Besproken" if is_done else "Nog te bespreken" }}
-        </span>
-        <form method="post" action="/incidents/{{ incident.id }}/aar/discussion-points/{{ dp.id }}/toggle-discussed">
-          <button type="submit"
-                  class="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold transition
-                         {{ 'bg-emerald-600 text-white hover:bg-emerald-700' if is_done else 'bg-white border border-amber-300 text-amber-700 hover:bg-amber-100' }}">
-            {{ icons.icon('check-circle', 'w-3.5 h-3.5') }}
-            {{ "Besproken" if is_done else "Markeer als besproken" }}
-          </button>
-        </form>
-      </div>
-    </div>
-    {% endfor %}
+{% for report, items in discussion_points_by_commander %}
+<div class="mb-5">
+  <div class="flex items-center gap-2 mb-2">
+    {% if report %}
+    <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-ink-900 text-white text-[11px] font-mono font-bold">
+      {{ report.callsign[:3] if report.callsign else "?" }}
+    </span>
+    <span class="text-[13.5px] font-semibold text-ink-900">{{ report.rank }} {{ report.surname }}</span>
+    <span class="text-[12px] font-semibold text-slate-600">{{ report.callsign }}</span>
+    {% else %}
+    <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-ink-900 text-white">
+      {{ icons.icon('users', 'w-3.5 h-3.5') }}
+    </span>
+    <span class="text-[13.5px] font-semibold text-ink-900">Gedeeld tussen bevelvoerders</span>
+    {% endif %}
   </div>
+  <div class="rounded-md border border-amber-200 bg-amber-50/60 p-4">
+    <ul class="space-y-1.5">
+      {% for dp in items %}
+      {% set is_done = dp.discussed %}
+      <li id="dp-{{ dp.id }}" class="text-[13px] leading-snug group {{ 'text-slate-400' if is_done else 'text-slate-700' }}">
+        <div class="flex items-start gap-1.5">
+          <form method="post" action="/incidents/{{ incident.id }}/aar/discussion-points/{{ dp.id }}/toggle-discussed" class="shrink-0 mt-[1px]">
+            <button type="submit" title="{{ 'Besproken' if is_done else 'Markeer als besproken' }}"
+                    class="flex h-3.5 w-3.5 items-center justify-center rounded-full border {{ 'bg-emerald-500 border-emerald-500 text-white' if is_done else 'border-amber-400 text-transparent hover:bg-amber-100' }}">
+              {{ icons.icon('check-circle', 'w-3 h-3') }}
+            </button>
+          </form>
+          <span class="flex-1 {{ 'line-through' if is_done }}">
+            <span class="font-semibold {{ 'text-slate-400' if is_done else 'text-ink-900' }}">{{ dp.title }}</span>{% if dp.description %} <span>&mdash; {{ dp.description }}</span>{% endif %}
+          </span>
+          <form method="post" action="/incidents/{{ incident.id }}/aar/discussion-points/{{ dp.id }}/delete"
+                onsubmit="return confirm('Dit bespreekpunt verwijderen?')" class="shrink-0 opacity-0 group-hover:opacity-100 transition">
+            <button type="submit" class="text-slate-300 hover:text-rose-600 transition">{{ icons.icon('trash', 'w-3.5 h-3.5') }}</button>
+          </form>
+        </div>
 
-  <details class="mt-5 rounded-lg border border-dashed border-slate-300 p-5">
-    <summary class="cursor-pointer text-[13px] font-medium text-slate-600 select-none">+ Bespreekpunt handmatig toevoegen</summary>
-    <form method="post" action="/incidents/{{ incident.id }}/aar/discussion-points" class="mt-3 space-y-2">
+        <div class="inline-notes-box ml-5 mt-1">
+          <div class="inline-notes-add {{ 'hidden' if dp.facilitator_notes }}">
+            <button type="button" class="inline-notes-add-btn text-[11px] font-medium text-slate-400 hover:text-accent-600 transition select-none">+ Commentaar toevoegen</button>
+          </div>
+          <div class="inline-notes-view flex items-start gap-1.5 {{ 'hidden' if not dp.facilitator_notes }}">
+            <span class="inline-notes-text flex-1 text-[12px] text-slate-500 italic">{{ dp.facilitator_notes }}</span>
+            <div class="shrink-0 flex items-center gap-2">
+              <button type="button" class="inline-notes-edit-btn text-slate-300 hover:text-accent-600 transition">{{ icons.icon('pencil', 'w-3 h-3') }}</button>
+              <button type="button" class="inline-notes-delete-btn text-slate-300 hover:text-rose-600 transition">{{ icons.icon('trash', 'w-3 h-3') }}</button>
+            </div>
+          </div>
+          <form method="post" action="/incidents/{{ incident.id }}/aar/discussion-points/{{ dp.id }}/notes" class="inline-notes-form hidden mt-1 flex gap-1.5">
+            <textarea name="text" rows="1" placeholder="Wat werd hierover besproken?"
+                      class="flex-1 rounded-md border border-slate-300 px-2 py-1 text-[12px] focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500">{{ dp.facilitator_notes }}</textarea>
+            <button type="submit" class="rounded-md border border-slate-300 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 transition shrink-0">Opslaan</button>
+          </form>
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+{% endfor %}
+
+{% endif %}
+
+<details class="mt-2 rounded-lg border border-dashed border-slate-300 p-5">
+  <summary class="cursor-pointer text-[13px] font-medium text-slate-600 select-none">+ Bespreekpunt handmatig toevoegen</summary>
+  <form method="post" action="/incidents/{{ incident.id }}/aar/discussion-points" class="mt-3 space-y-2">
+    <input type="text" name="title" required placeholder="Titel"
+           class="w-full rounded-md border border-slate-300 px-3 py-2 text-[13px] focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500">
+    <textarea name="description" rows="2" placeholder="Beschrijving"
+              class="w-full rounded-md border border-slate-300 px-3 py-2 text-[13px] focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"></textarea>
+    <button type="submit" class="rounded-md bg-ink-900 px-3.5 py-2 text-[13px] font-semibold text-white hover:bg-ink-800 transition">Toevoegen</button>
+  </form>
+</details>
+
+<h2 class="text-[13px] font-semibold text-ink-900 mb-1 mt-8">Leerpunten</h2>
+<p class="text-[11.5px] text-slate-500 mb-4">Thema's die over meerdere bespreekpunten heen terugkwamen.</p>
+
+{% if not lessons and not unlinked_improvements %}
+  {{ c.empty_state("Nog geen leerpunten.") }}
+{% else %}
+<div class="rounded-md border border-indigo-200 bg-indigo-50/60 p-4">
+  <ul class="space-y-1.5">
+    {% for lesson in lessons %}
+    {% set related = improvements_by_lesson.get(lesson.id, []) %}
+    <li class="text-[13px] text-slate-700 leading-snug group">
+      <div class="flex items-start gap-1.5">
+        <span class="text-indigo-500 mt-[1px]">&bull;</span>
+        <span class="flex-1">
+          <span class="font-semibold text-ink-900">{{ lesson.title }}</span>{% if lesson.description %} <span>&mdash; {{ lesson.description }}</span>{% endif %}
+        </span>
+        <form method="post" action="/incidents/{{ incident.id }}/aar/lessons/{{ lesson.id }}/delete"
+              onsubmit="return confirm('Dit leerpunt verwijderen?')" class="shrink-0 opacity-0 group-hover:opacity-100 transition">
+          <button type="submit" class="text-slate-300 hover:text-rose-600 transition">{{ icons.icon('trash', 'w-3.5 h-3.5') }}</button>
+        </form>
+      </div>
+      {% if related %}
+      <div class="ml-4 mt-1 space-y-0.5">
+        {% for imp in related %}
+        <div class="flex items-start gap-1.5 text-[12.5px] text-slate-500 group/imp">
+          <span class="text-indigo-300 mt-[1px]">&#8618;</span>
+          <span class="flex-1"><span class="font-medium text-slate-600">{{ imp.title }}</span> &mdash; {{ imp.description }}</span>
+          <form method="post" action="/incidents/{{ incident.id }}/aar/improvements/{{ imp.id }}/delete"
+                onsubmit="return confirm('Deze verbetering verwijderen?')" class="shrink-0 opacity-0 group-hover/imp:opacity-100 transition">
+            <button type="submit" class="text-slate-300 hover:text-rose-600 transition">{{ icons.icon('trash', 'w-3 h-3') }}</button>
+          </form>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </li>
+    {% endfor %}
+    {% if unlinked_improvements %}
+    {% if lessons %}<li class="border-t border-indigo-200/70 pt-1.5"></li>{% endif %}
+    {% for imp in unlinked_improvements %}
+    <li class="text-[13px] text-slate-700 leading-snug flex items-start gap-1.5 group">
+      <span class="text-indigo-500 mt-[1px]">&bull;</span>
+      <span class="flex-1"><span class="font-semibold text-ink-900">{{ imp.title }}</span> &mdash; {{ imp.description }}</span>
+      <form method="post" action="/incidents/{{ incident.id }}/aar/improvements/{{ imp.id }}/delete"
+            onsubmit="return confirm('Deze verbetering verwijderen?')" class="shrink-0 opacity-0 group-hover:opacity-100 transition">
+        <button type="submit" class="text-slate-300 hover:text-rose-600 transition">{{ icons.icon('trash', 'w-3.5 h-3.5') }}</button>
+      </form>
+    </li>
+    {% endfor %}
+    {% endif %}
+  </ul>
+</div>
+{% endif %}
+
+<div class="mt-2 grid grid-cols-2 gap-3">
+  <details class="rounded-lg border border-dashed border-slate-300 p-5">
+    <summary class="cursor-pointer text-[13px] font-medium text-slate-600 select-none">+ Leerpunt handmatig toevoegen</summary>
+    <form method="post" action="/incidents/{{ incident.id }}/aar/lessons" class="mt-3 space-y-2">
       <input type="text" name="title" required placeholder="Titel"
              class="w-full rounded-md border border-slate-300 px-3 py-2 text-[13px] focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500">
       <textarea name="description" rows="2" placeholder="Beschrijving"
@@ -80,104 +147,69 @@
       <button type="submit" class="rounded-md bg-ink-900 px-3.5 py-2 text-[13px] font-semibold text-white hover:bg-ink-800 transition">Toevoegen</button>
     </form>
   </details>
-</section>
+  <details class="rounded-lg border border-dashed border-slate-300 p-5">
+    <summary class="cursor-pointer text-[13px] font-medium text-slate-600 select-none">+ Verbetering handmatig toevoegen</summary>
+    <form method="post" action="/incidents/{{ incident.id }}/aar/improvements" class="mt-3 space-y-2">
+      <input type="text" name="title" required placeholder="Titel"
+             class="w-full rounded-md border border-slate-300 px-3 py-2 text-[13px] focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500">
+      <textarea name="description" rows="2" placeholder="Beschrijving"
+                class="w-full rounded-md border border-slate-300 px-3 py-2 text-[13px] focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"></textarea>
+      <button type="submit" class="rounded-md bg-ink-900 px-3.5 py-2 text-[13px] font-semibold text-white hover:bg-ink-800 transition">Toevoegen</button>
+    </form>
+  </details>
+</div>
 
-<section>
-  <h2 class="text-[13px] font-semibold text-ink-900 mb-3.5">Leerpunten</h2>
-
-  {% if not lessons %}
-    {{ c.empty_state("Nog geen leerpunten.") }}
-  {% endif %}
-
-  <div class="grid grid-cols-2 gap-4 items-start">
-    {% for lesson in lessons %}
-    <div class="rounded-[13px] border border-slate-200 bg-white shadow-card p-6">
-      <div class="flex items-start justify-between gap-4">
-        <div class="flex flex-wrap items-center gap-2">
-          {{ c.badge("Leerpunt", "indigo") }}
-          {% if lesson.is_human_added %}{{ c.badge("Door facilitator", "sky") }}{% endif %}
-        </div>
-        <form method="post" action="/incidents/{{ incident.id }}/aar/lessons/{{ lesson.id }}/delete"
-              onsubmit="return confirm('Dit leerpunt verwijderen?')">
-          <button type="submit" class="text-slate-300 hover:text-rose-600 transition shrink-0">{{ icons.icon('trash', 'w-4 h-4') }}</button>
-        </form>
-      </div>
-
-      <div class="mt-2.5">
-        {{ c.lesson_sources(lesson.discussion_point_ids, discussion_points_by_id, observations_by_id) }}
-      </div>
-
-      <form method="post" action="/incidents/{{ incident.id }}/aar/lessons/{{ lesson.id }}/update" class="mt-3 space-y-2">
-        <input type="text" name="title" value="{{ lesson.title }}" title="{{ lesson.title }}"
-               class="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm font-semibold text-slate-900 overflow-hidden text-ellipsis focus:border-accent-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-accent-500">
-        <textarea name="description" rows="5"
-                  class="w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm text-slate-600 focus:border-accent-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-accent-500">{{ lesson.description }}</textarea>
-        <button type="submit" class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition">
-          Opslaan
-        </button>
-      </form>
-
-      {% set related = improvements_by_lesson.get(lesson.id, []) %}
-      {% if related %}
-      <div class="mt-4 space-y-2 border-l-2 border-indigo-100 pl-4">
-        {% for imp in related %}
-        <div class="flex items-start justify-between gap-3">
-          <div>
-            <div class="text-xs font-semibold text-slate-700">↳ {{ imp.title }}</div>
-            <div class="text-xs text-slate-500 mt-0.5">{{ imp.description }}</div>
-          </div>
-          <form method="post" action="/incidents/{{ incident.id }}/aar/improvements/{{ imp.id }}/delete"
-                onsubmit="return confirm('Deze verbetering verwijderen?')">
-            <button type="submit" class="text-slate-300 hover:text-rose-600 transition shrink-0">{{ icons.icon('trash', 'w-3.5 h-3.5') }}</button>
-          </form>
-        </div>
-        {% endfor %}
-      </div>
-      {% endif %}
-    </div>
-    {% endfor %}
-  </div>
-
-  {% if unlinked_improvements %}
-  <div class="mt-6">
-    <h3 class="text-sm font-semibold text-slate-700 mb-3">Overige mogelijke verbeteringen</h3>
-    <div class="space-y-2">
-      {% for imp in unlinked_improvements %}
-      <div class="rounded-xl border border-slate-200 bg-white px-5 py-3 flex items-start justify-between gap-3">
-        <div>
-          <div class="text-sm font-medium text-slate-800">{{ imp.title }}</div>
-          <div class="text-xs text-slate-500 mt-0.5">{{ imp.description }}</div>
-        </div>
-        <form method="post" action="/incidents/{{ incident.id }}/aar/improvements/{{ imp.id }}/delete"
-              onsubmit="return confirm('Deze verbetering verwijderen?')">
-          <button type="submit" class="text-slate-300 hover:text-rose-600 transition shrink-0">{{ icons.icon('trash', 'w-4 h-4') }}</button>
-        </form>
-      </div>
-      {% endfor %}
-    </div>
-  </div>
-  {% endif %}
-
-  <div class="mt-6 grid grid-cols-2 gap-4">
-    <details class="rounded-lg border border-dashed border-slate-300 p-5">
-      <summary class="cursor-pointer text-sm font-medium text-slate-600 select-none">+ Leerpunt handmatig toevoegen</summary>
-      <form method="post" action="/incidents/{{ incident.id }}/aar/lessons" class="mt-3 space-y-2">
-        <input type="text" name="title" required placeholder="Titel"
-               class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500">
-        <textarea name="description" rows="2" placeholder="Beschrijving"
-                  class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"></textarea>
-        <button type="submit" class="rounded-lg bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-ink-800 transition">Toevoegen</button>
-      </form>
-    </details>
-    <details class="rounded-lg border border-dashed border-slate-300 p-5">
-      <summary class="cursor-pointer text-sm font-medium text-slate-600 select-none">+ Verbetering handmatig toevoegen</summary>
-      <form method="post" action="/incidents/{{ incident.id }}/aar/improvements" class="mt-3 space-y-2">
-        <input type="text" name="title" required placeholder="Titel"
-               class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500">
-        <textarea name="description" rows="2" placeholder="Beschrijving"
-                  class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500"></textarea>
-        <button type="submit" class="rounded-lg bg-ink-900 px-4 py-2 text-sm font-semibold text-white hover:bg-ink-800 transition">Toevoegen</button>
-      </form>
-    </details>
-  </div>
-</section>
+<script>
+  // Inline-notitie vakjes (commentaar bij bespreekpunten) worden op de
+  // achtergrond opgeslagen, zonder de pagina te herladen — anders verlies
+  // je bij het opslaan je scrollpositie en (bij Waarnemingen) de "naast
+  // elkaar"-vergelijkingsselectie. Werkt via event delegation zodat dit
+  // ook voor later toegevoegde punten werkt, geen JS -> gewoon form-submit
+  // als terugval.
+  document.addEventListener('click', function (e) {
+    var addBtn = e.target.closest('.inline-notes-add-btn');
+    var editBtn = e.target.closest('.inline-notes-edit-btn');
+    if (addBtn || editBtn) {
+      var box = e.target.closest('.inline-notes-box');
+      box.querySelector('.inline-notes-add')?.classList.add('hidden');
+      box.querySelector('.inline-notes-view').classList.add('hidden');
+      var form = box.querySelector('.inline-notes-form');
+      form.classList.remove('hidden');
+      form.querySelector('textarea').focus();
+      return;
+    }
+    var delBtn = e.target.closest('.inline-notes-delete-btn');
+    if (delBtn) {
+      if (!confirm('Dit commentaar verwijderen?')) return;
+      submitInlineNotes(e.target.closest('.inline-notes-box'), '');
+    }
+  });
+  document.addEventListener('submit', function (e) {
+    if (!e.target.classList.contains('inline-notes-form')) return;
+    e.preventDefault();
+    var box = e.target.closest('.inline-notes-box');
+    submitInlineNotes(box, e.target.querySelector('textarea').value);
+  });
+  function submitInlineNotes(box, text) {
+    var form = box.querySelector('.inline-notes-form');
+    var body = new URLSearchParams();
+    body.set('text', text);
+    fetch(form.action, { method: 'POST', body: body, headers: { 'Content-Type': 'application/x-www-form-urlencoded' } })
+      .then(function (resp) {
+        if (!resp.ok) { alert('Opslaan mislukt.'); return; }
+        var trimmed = text.trim();
+        form.classList.add('hidden');
+        var viewEl = box.querySelector('.inline-notes-view');
+        var addEl = box.querySelector('.inline-notes-add');
+        if (trimmed) {
+          viewEl.querySelector('.inline-notes-text').textContent = trimmed;
+          viewEl.classList.remove('hidden');
+          if (addEl) addEl.classList.add('hidden');
+        } else {
+          viewEl.classList.add('hidden');
+          if (addEl) addEl.classList.remove('hidden');
+        }
+      })
+      .catch(function () { alert('Opslaan mislukt — controleer de verbinding.'); });
+  }
+</script>

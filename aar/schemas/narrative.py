@@ -14,7 +14,7 @@ class SituationNarrativeOutput(BaseModel):
     narrative: str = Field(
         min_length=1,
         description=(
-            "Doorlopende tekst (enkele alinea's), geen opsomming per commandant. "
+            "Doorlopende tekst (enkele alinea's), geen opsomming per bevelvoerder. "
             "Waar bronnen elkaar aanvullen: samenvoegen tot één lopend verhaal. "
             "Waar bronnen elkaar tegenspreken: het verschil benoemen, geen kant kiezen."
         ),

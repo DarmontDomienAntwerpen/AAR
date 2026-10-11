@@ -11,16 +11,30 @@ For a one-paragraph overview, see [README.md](README.md).
 An internal, AI-assisted After Action Review (AAR) tool for real fire-service
 incidents. A facilitator:
 
-1. Creates an incident (date, location, type, short description).
-2. Uploads each commander's completed `.docx` report, the dispatch/
-   control-room `.xlsx` export, and optionally reference photos/plans.
+1. Creates an incident (date, location, type, short description — the
+   "eindbalans", shown as its own callout throughout the app).
+2. Uploads each commander's completed `.docx` report — or, alternatively,
+   one Google-Forms responses sheet (`.xlsx`) covering multiple commanders
+   at once (see `aar/ingestion/commander_sheet.py`) — plus the dispatch/
+   control-room `.xlsx` export, and optionally reference photos/plans
+   (uploadable from three places: Bronnen, Overzicht, or directly inside a
+   bevelvoerder's own overlay, where a photo can also be linked straight to
+   that bevelvoerder — independent of linking a photo to an
+   Incidentverloop moment).
 3. Runs the AI analysis pipeline, which extracts structured information from
    each report, reconstructs a shared chronological incident view, and
    proposes discussion points, positive findings, lessons, and improvements.
 4. Reviews and edits everything in the interactive AAR screen — the AI's
    output is a starting point, never the final word. Corrections can trigger
-   a re-analysis that takes them into account.
-5. Marks the AAR as finished; it's then searchable in the archive.
+   a re-analysis that takes them into account. Werkpunten and Extra
+   opmerkingen are the two tabs that are never AI-filtered — a direct,
+   complete pull-through of what each bevelvoerder wrote, plus whatever the
+   facilitator adds manually.
+5. Marks the AAR as "afgerond" (finalized) once satisfied — this locks
+   every mutating action (edits, uploads, re-analysis) across the whole
+   incident, with a clearly visible "Heropenen" button to lift that lock
+   again if something still needs fixing. It's then searchable in the
+   archive either way.
 
 The AI never invents timestamps, never silently resolves conflicting
 accounts between commanders, and never judges an individual's competence —
@@ -65,9 +79,11 @@ cp .env.example .env
 | `AAR_ANTHROPIC_MODEL` | `claude-sonnet-5` | Model id used for Anthropic calls |
 | `AAR_DB_PATH` | `data/aar.db` | SQLite database file location |
 | `AAR_LOG_LEVEL` | `INFO` | `DEBUG`/`INFO`/`WARNING`/`ERROR` |
+| `AAR_ACCESS_PASSWORD` | (empty) | If set, gates every page behind a single shared login (`/login`) — no accounts, one password for every facilitator. Leave empty for local-only use where nothing beyond your own machine can reach the app. |
+| `AAR_SESSION_SECRET` | auto-generated | Signs the login session cookie. Auto-generated and persisted to `data/.session_secret` (gitignored) on first run if left empty, so logins survive restarts. Only set explicitly if `data/` gets wiped on every deploy and you need sessions to survive that. |
 
-Never commit `.env` (it's gitignored) or put a real API key in any file
-that gets committed.
+Never commit `.env` (it's gitignored) or put a real API key or
+`AAR_ACCESS_PASSWORD` in any file that gets committed.
 
 ---
 
@@ -111,14 +127,14 @@ To get real AI-quality analysis:
 3. Restart the app. Every subsequent "Analyse (opnieuw) uitvoeren" click
    will call the real model instead of the mock.
 
-**This path is UNVERIFIED in this handoff** — no API key was available in
-the build environment, so `AnthropicProvider` has never actually been
-exercised against the live API. Everything around it (prompt construction,
-JSON-schema-forced tool use, retry-on-invalid-output, error handling) is
-implemented and unit-tested with a fake provider standing in for the SDK
-call, but the real network call itself needs to be verified by whoever has
-a key. If something breaks, check `aar/llm/provider_anthropic.py` first —
-it's a single, short file.
+This path has been exercised repeatedly against the live API on real
+(non-synthetic) incidents — see `PROJECT_STATE.md` §7-9 (Phases 21-24) for
+what that surfaced and fixed. Each call logs its input/output token count
+(`aar/llm/provider_anthropic.py`) so actual cost is visible in the server
+log, not just estimated. If something breaks, check
+`aar/llm/provider_anthropic.py` and `aar/llm/base.py::_repair_double_encoded_json`
+first — the latter fixes a real, recurring schema-encoding quirk seen under
+load.
 
 ---
 
@@ -129,7 +145,7 @@ source .venv/bin/activate
 pytest                    # full suite — no API key needed, no network calls
 ```
 
-Expect ~110 tests, all passing except one intentionally-skipped test
+Expect ~142 tests, all passing except one intentionally-skipped test
 (`test_synthetic_incident_conditions_c_and_e_require_real_provider`) that
 documents the mock-provider limitation from §6 rather than silently omitting
 the check.
@@ -221,10 +237,19 @@ after any change to the section headings:
 python scripts/generate_template.py
 ```
 
-Do not rename section headings or the identification/objective-achieved
-table labels without updating `aar/ingestion/commander_docx.py` in the same
-change — the parser matches on exact (normalised) text. It's also available
-for download directly from the running app's "Bronnen" screen.
+Do not rename section headings or the identification table labels without
+updating `aar/ingestion/commander_docx.py` in the same change — the parser
+matches on exact (normalised) text. It's also available for download
+directly from the running app's "Bronnen" screen.
+
+The Google Form path (`aar/ingestion/commander_sheet.py`) mirrors the same
+5 sections but matches by normalised header *prefix* rather than exact
+text — a facilitator building the Form manually will not word every
+question identically to the DOCX template, and real-world drift already
+broke the original exact-match assumption once (see `PROJECT_STATE.md`
+Phase 23). If a real Form's questions stop being recognised, check
+`IDENTITY_COLUMN_PREFIXES`/`SECTION_COLUMN_PREFIXES`/`_ACTION_COLUMN_RE` in
+that file first.
 
 ---
 
@@ -259,11 +284,13 @@ for download directly from the running app's "Bronnen" screen.
 
 ## 13. Unresolved issues
 
-None known. All planned phases (0-13) are complete, plus a post-handoff UI
-rewrite (FastAPI/Tailwind, replacing the original Streamlit MVP UI, at the
-user's request) and a photo/plan attachment feature; see
-`PROJECT_STATE.md` §7 for the phase-by-phase status and §9 for the (small,
-all-documented) list of things that need a real API key to verify further.
+All planned phases (0-13) are complete, plus 11 post-handoff phases
+(14-24) — see `PROJECT_STATE.md` §7 for the phase-by-phase status. The
+known, currently-open items (real-LLM non-determinism as a recurring
+characteristic — not fully eliminable, only individually caught where
+checkable; no automated backup of `data/aar.db`/`data/uploads/`, an
+explicit accepted trade-off — see below) are tracked in
+`PROJECT_STATE.md` §9, kept current there rather than duplicated here.
 
 ---
 
@@ -282,11 +309,15 @@ AAR/
 │   ├── models/                  ORM models + shared enums
 │   ├── schemas/                 Pydantic boundary contracts (forms,
 │   │                            ingestion output, LLM I/O per stage)
-│   ├── ingestion/                commander_docx.py, dispatch_excel.py
+│   ├── ingestion/                commander_docx.py, commander_sheet.py
+│   │                             (Google Form/Sheet export), dispatch_excel.py
 │   ├── llm/                      base.py, mock.py, provider_anthropic.py,
 │   │                             factory.py, prompts/
 │   ├── analysis/                 extraction, reconstruction, timeline,
-│   │                             findings, lessons, pipeline (orchestrator)
+│   │                             findings, lessons, narrative (AI situation
+│   │                             synthesis), cleanup (on-demand text
+│   │                             proofreading, not a pipeline stage),
+│   │                             pipeline (orchestrator)
 │   ├── services/                 incident/report/dispatch/media/analysis/
 │   │                             aar services — all business logic, no
 │   │                             web-framework code

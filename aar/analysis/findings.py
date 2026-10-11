@@ -16,7 +16,9 @@ from aar.config.logging_setup import get_logger
 from aar.llm.base import LLMOutputValidationError, LLMProvider
 from aar.llm.prompts.system_prompts import build_system_prompt
 from aar.models import (
+    ConfidenceState,
     CreatedBy,
+    DiscussionOrigin,
     DiscussionPoint,
     HumanCorrection,
     Incident,
@@ -66,12 +68,12 @@ expliciet benoemt. Wees hier terughoudend en alleen concreet onderbouwd \
 door de meegegeven observation_ids.
 
 BELANGRIJK — combineer, dupliceer niet: als meerdere waarnemingen van \
-VERSCHILLENDE commandanten (verschillende commander_report_id) hetzelfde \
+VERSCHILLENDE bevelvoerders (verschillende commander_report_id) hetzelfde \
 onderliggende punt beschrijven — ook al is de bewoording anders — maak daar \
 dan ÉÉN discussion_point of positive_finding van, met alle betrokken \
 observation_ids samen in observation_ids (dus niet één punt per \
-commandant). Zo blijft het overzicht kort en zie je meteen welke \
-commandanten hetzelfde punt maakten, in plaats van hetzelfde punt twee of \
+bevelvoerder). Zo blijft het overzicht kort en zie je meteen welke \
+bevelvoerders hetzelfde punt maakten, in plaats van hetzelfde punt twee of \
 drie keer na elkaar te lezen.
 
 Gebruik uitsluitend de meegegeven observation_ids als bewijs. Verzin geen \
@@ -160,6 +162,57 @@ def run_findings(session: Session, incident: Incident, provider: LLMProvider) ->
             )
         )
 
+    # Deterministic safety net: the addendum above is explicit that every
+    # assumption/uncertainty observation must become a discussion_point
+    # ("vrijwel altijd... lege lijsten teruggeven... is een fout") — seen in
+    # practice to not always be followed (the LLM sometimes returns none at
+    # all for a run where such observations clearly exist). Rather than
+    # silently losing a flagged assumption/uncertainty because the LLM
+    # missed it this run, catch anything it didn't reference and add a
+    # minimal fallback point for it — same principle as the reconstruction
+    # ordering fix: don't rely purely on prompt compliance for something
+    # this tool already claims to guarantee.
+    referenced_observation_ids = {oid for dp in result.discussion_points for oid in dp.observation_ids}
+    fallback_origin = {
+        ObservationType.ASSUMPTION: DiscussionOrigin.ASSUMPTION,
+        ObservationType.UNCERTAINTY: DiscussionOrigin.UNCERTAINTY,
+    }
+    flagged_observations = (
+        session.query(Observation)
+        .filter(
+            Observation.incident_id == incident.id,
+            Observation.observation_type.in_(list(fallback_origin.keys())),
+        )
+        .all()
+    )
+    missed_observations = [o for o in flagged_observations if o.id not in referenced_observation_ids]
+    for o in missed_observations:
+        session.add(
+            DiscussionPoint(
+                incident_id=incident.id,
+                event_id=None,
+                title=o.content,
+                description=(
+                    f"Automatisch gesignaleerd ({o.observation_type.value}), niet apart opgenomen "
+                    f"door de AI-analyse zelf. Brontekst: „{o.source_passage}”"
+                    if o.source_passage
+                    else f"Automatisch gesignaleerd ({o.observation_type.value}), niet apart opgenomen "
+                    "door de AI-analyse zelf."
+                ),
+                origin_category=fallback_origin[o.observation_type],
+                confidence_state=ConfidenceState.ONZEKER,
+                observation_ids=[o.id],
+                is_human_added=False,
+            )
+        )
+    if missed_observations:
+        logger.warning(
+            "Findings for incident %s: %d assumption/uncertainty observation(s) missed by the "
+            "LLM, added as fallback discussion points.",
+            incident.id,
+            len(missed_observations),
+        )
+
     for pf in result.positive_findings:
         session.add(
             PositiveFinding(
@@ -170,6 +223,44 @@ def run_findings(session: Session, incident: Incident, provider: LLMProvider) ->
                 observation_ids=pf.observation_ids,
                 is_human_added=False,
             )
+        )
+
+    # Same deterministic safety net as the discussion_points fallback above:
+    # a "went_well" observation is a literal, structural signal (the form's
+    # own section, not an LLM judgement call) that something positive was
+    # reported — seen in practice to sometimes be dropped entirely by the
+    # LLM in a given run (positive_findings coming back empty despite clear
+    # went_well content). Catch anything not referenced and add a minimal
+    # fallback finding for it, rather than silently losing it.
+    referenced_pf_observation_ids = {oid for pf in result.positive_findings for oid in pf.observation_ids}
+    went_well_observations = (
+        session.query(Observation)
+        .filter(Observation.incident_id == incident.id, Observation.source_section == "went_well")
+        .all()
+    )
+    missed_went_well = [o for o in went_well_observations if o.id not in referenced_pf_observation_ids]
+    for o in missed_went_well:
+        session.add(
+            PositiveFinding(
+                incident_id=incident.id,
+                event_id=None,
+                title=o.content,
+                description=(
+                    f"Automatisch gesignaleerd (wat ging goed), niet apart opgenomen door de "
+                    f"AI-analyse zelf. Brontekst: „{o.source_passage}”"
+                    if o.source_passage
+                    else "Automatisch gesignaleerd (wat ging goed), niet apart opgenomen door de AI-analyse zelf."
+                ),
+                observation_ids=[o.id],
+                is_human_added=False,
+            )
+        )
+    if missed_went_well:
+        logger.warning(
+            "Findings for incident %s: %d went_well observation(s) missed by the LLM, "
+            "added as fallback positive findings.",
+            incident.id,
+            len(missed_went_well),
         )
 
     for ai_obs in result.ai_observations:

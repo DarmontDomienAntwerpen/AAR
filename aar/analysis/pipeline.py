@@ -45,7 +45,7 @@ def run_analysis(session: Session, incident: Incident, provider: LLMProvider) ->
         session.commit()
         reports = session.query(CommanderReport).filter_by(incident_id=incident.id).all()
         if not reports:
-            raise ValueError("Geen commandantenverslagen beschikbaar om te analyseren.")
+            raise ValueError("Geen bevelvoerdersverslagen beschikbaar om te analyseren.")
         for report in reports:
             if report.extraction_status == ParseStatus.PARSED:
                 continue

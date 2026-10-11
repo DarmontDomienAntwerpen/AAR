@@ -1,9 +1,16 @@
+from aar.config.settings import get_settings
 from aar.models import AnalysisRunStatus, CommanderReport, SourceDocument, SourceDocumentType
 from aar.services.analysis_service import get_latest_analysis_run, trigger_analysis
 
 
 def test_trigger_analysis_uses_default_mock_provider(session, sample_incident, monkeypatch):
-    monkeypatch.delenv("AAR_LLM_PROVIDER", raising=False)
+    # delenv alone isn't enough to isolate this from a real .env file: with
+    # the var absent from os.environ, get_settings()'s load_dotenv(...,
+    # override=False) call re-populates it straight from .env (real
+    # deployments set AAR_LLM_PROVIDER=anthropic there) — silently making
+    # this test hit the real Anthropic API. Force "mock" explicitly instead.
+    monkeypatch.setenv("AAR_LLM_PROVIDER", "mock")
+    get_settings.cache_clear()
     doc = SourceDocument(
         incident_id=sample_incident.id,
         doc_type=SourceDocumentType.COMMANDER_REPORT,
@@ -24,8 +31,11 @@ def test_trigger_analysis_uses_default_mock_provider(session, sample_incident, m
     session.add(report)
     session.commit()
 
-    run = trigger_analysis(session, sample_incident)
-    assert run.status == AnalysisRunStatus.SUCCESS
+    try:
+        run = trigger_analysis(session, sample_incident)
+        assert run.status == AnalysisRunStatus.SUCCESS
 
-    latest = get_latest_analysis_run(session, sample_incident)
-    assert latest.id == run.id
+        latest = get_latest_analysis_run(session, sample_incident)
+        assert latest.id == run.id
+    finally:
+        get_settings.cache_clear()

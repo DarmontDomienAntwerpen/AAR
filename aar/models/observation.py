@@ -33,6 +33,15 @@ class Observation(Base):
     content: Mapped[str] = mapped_column(Text, nullable=False)
     source_passage: Mapped[str | None] = mapped_column(Text, nullable=True)
     attributed_to: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Which form section (situation/actions/went_well/went_less_well/
+    # other/difficulties) this item came from — independent of `category`
+    # (the semantic classification). Used to group "Waarnemingen & acties"
+    # by the form's own sections instead of by inferred category, so a
+    # sentence from "Overige opmerkingen" that reads like an assessment
+    # still displays under Overige opmerkingen. Nullable for observations
+    # extracted before this field existed, or not tied to a single section
+    # (e.g. AI-cross-report observations).
+    source_section: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     reported_time_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     dispatch_timestamp: Mapped[dt.datetime | None] = mapped_column(DateTime, nullable=True)

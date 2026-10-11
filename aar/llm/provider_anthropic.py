@@ -70,6 +70,14 @@ class AnthropicProvider(LLMProvider):
             logger.error("Anthropic API error: %s", exc)
             raise LLMProviderError(f"Anthropic API-fout: {exc}") from exc
 
+        usage = response.usage
+        logger.info(
+            "Anthropic call (%s): %d input tokens, %d output tokens.",
+            tool_name,
+            usage.input_tokens,
+            usage.output_tokens,
+        )
+
         for block in response.content:
             if getattr(block, "type", None) == "tool_use":
                 return json.dumps(block.input)

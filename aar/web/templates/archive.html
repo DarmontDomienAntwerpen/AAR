@@ -57,23 +57,29 @@
   {{ c.empty_state("Geen incidenten gevonden.") }}
 {% else %}
 <div class="rounded-[13px] border border-slate-200 bg-white shadow-card overflow-hidden">
-  <div class="grid grid-cols-[1fr_140px_110px_100px_24px] gap-4 px-4 py-2 text-[11px] font-medium uppercase tracking-wide text-slate-400 border-b border-slate-100">
+  <div class="grid grid-cols-[1fr_140px_110px_100px_24px_32px] gap-4 px-4 py-2 text-[11px] font-medium uppercase tracking-wide text-slate-400 border-b border-slate-100">
     <div>Incident</div>
     <div>Type</div>
     <div>Datum</div>
     <div>Status</div>
     <div></div>
+    <div></div>
   </div>
   {% for incident in incidents %}
-  <a href="{{ incident_home_url(incident) }}"
-     class="grid grid-cols-[1fr_140px_110px_100px_24px] items-center gap-4 px-4 py-3 border-b border-slate-100 last:border-0 hover:bg-slate-50/80 transition">
+  <div class="relative grid grid-cols-[1fr_140px_110px_100px_24px_32px] items-center gap-4 px-4 py-3 border-b border-slate-100 last:border-0 hover:bg-slate-50/80 transition">
+    <a href="{{ incident_home_url(incident) }}" class="absolute inset-0" aria-label="Open {{ incident.location }}"></a>
     <div class="min-w-0">
       <div class="font-medium text-[13.5px] text-ink-900 truncate">{{ incident.location }}</div>
       {% if incident.description %}
       <div class="text-[12px] text-slate-500 truncate mt-0.5">{{ incident.description }}</div>
       {% endif %}
     </div>
-    <div class="text-[12.5px] text-slate-600 truncate">{{ incident.incident_type.value }}</div>
+    <div>
+      <span class="inline-flex items-center gap-1 rounded px-1.5 py-[3px] text-[11px] font-semibold leading-none {{ incident_type_badge_class(incident.incident_type) }}">
+        <span class="h-1.5 w-1.5 rounded-full {{ incident_type_dot_class(incident.incident_type) }}"></span>
+        {{ incident.incident_type.value }}
+      </span>
+    </div>
     <div class="text-[12.5px] text-slate-500 tabular">{{ incident.date|nl_date }}</div>
     <div>
       <span class="inline-flex items-center rounded px-1.5 py-[3px] text-[11px] font-semibold leading-none {{ status_badge_class(incident.status) }}">
@@ -81,9 +87,27 @@
       </span>
     </div>
     {{ icons.icon('arrow-right', 'w-4 h-4 text-slate-300') }}
-  </a>
+    <form method="post" action="/incidents/{{ incident.id }}/delete" class="delete-incident-form relative z-10 justify-self-end" data-location="{{ incident.location }}">
+      <button type="submit" title="Incident wissen"
+              class="flex h-7 w-7 items-center justify-center rounded-md text-slate-300 hover:bg-rose-50 hover:text-rose-600 transition">
+        {{ icons.icon('trash', 'w-3.5 h-3.5') }}
+      </button>
+    </form>
+  </div>
   {% endfor %}
 </div>
 {% endif %}
+
+<script>
+  document.querySelectorAll('.delete-incident-form').forEach(function (form) {
+    form.addEventListener('submit', function (e) {
+      var location = form.dataset.location;
+      var typed = prompt('Dit incident en alle bijhorende gegevens (verslagen, analyse, foto\'s) worden permanent gewist.\n\nTyp de locatienaam om te bevestigen:\n' + location);
+      if (typed !== location) {
+        e.preventDefault();
+      }
+    });
+  });
+</script>
 
 {% endblock %}

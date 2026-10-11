@@ -350,7 +350,7 @@ def _extract_sections(doc: Document) -> tuple[dict[str, str], list[str], bool]:
         # trade-off, same as its other documented mock-only limitations.)
         sections["narrative"] = "\n".join(all_paragraphs).strip()
         warnings.append(
-            "Dit document volgt niet het standaard commandantenverslag-sjabloon "
+            "Dit document volgt niet het standaard bevelvoerdersverslag-sjabloon "
             "(geen herkende sectiekoppen) — de volledige tekst is als één geheel "
             "meegenomen voor analyse in plaats van per sectie."
         )

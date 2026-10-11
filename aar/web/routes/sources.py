@@ -10,7 +10,7 @@ from aar.services import media_service
 from aar.services.dispatch_service import ingest_dispatch_excel
 from aar.services.errors import DuplicateSourceError
 from aar.services.report_service import ingest_commander_report, ingest_commander_report_sheet
-from aar.web.deps import get_db, incident_or_404
+from aar.web.deps import get_db, incident_or_404, writable_incident_or_404
 from aar.web.flash import redirect_with_flash
 from aar.web.templating import templates
 
@@ -65,7 +65,7 @@ def sources_page(incident_id: int, request: Request, session: Session = Depends(
 async def upload_reports(
     incident_id: int, files: list[UploadFile] = File(...), session: Session = Depends(get_db)
 ):
-    incident = incident_or_404(session, incident_id)
+    incident = writable_incident_or_404(session, incident_id)
     messages = []
     for f in files:
         content = await f.read()
@@ -87,7 +87,7 @@ async def upload_reports_sheet(
 ):
     """Alternative to individual .docx uploads: a Google-Forms responses
     sheet (downloaded as .xlsx) carrying one row per commander."""
-    incident = incident_or_404(session, incident_id)
+    incident = writable_incident_or_404(session, incident_id)
     content = await file.read()
     try:
         docs = ingest_commander_report_sheet(session, incident, content, file.filename)
@@ -106,7 +106,7 @@ async def upload_reports_sheet(
 async def upload_dispatch(
     incident_id: int, file: UploadFile = File(...), session: Session = Depends(get_db)
 ):
-    incident = incident_or_404(session, incident_id)
+    incident = writable_incident_or_404(session, incident_id)
     content = await file.read()
     try:
         doc = ingest_dispatch_excel(session, incident, content, file.filename)
@@ -126,6 +126,6 @@ def download_template():
     path = settings.project_root / "templates" / "commander_report_template.docx"
     return FileResponse(
         path,
-        filename="commandantenverslag_sjabloon.docx",
+        filename="bevelvoerdersverslag_sjabloon.docx",
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     )

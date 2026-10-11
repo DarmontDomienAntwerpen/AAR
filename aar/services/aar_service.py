@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from aar.models import (
     CommanderReport,
+    CreatedBy,
     DiscussionPoint,
     EventPerspective,
     HumanCorrection,
@@ -19,10 +20,11 @@ from aar.models import (
     IncidentStatus,
     Lesson,
     Observation,
+    ObservationCategory,
+    ObservationType,
     PositiveFinding,
     SourceDocument,
 )
-from aar.models.enums import ObjectiveAchieved
 from aar.schemas.constants import CRUCIAL_SUMMARY_CATEGORIES
 
 # Matched against each event's *observations* (their category), not the
@@ -92,20 +94,13 @@ def update_commander_identity(
     unit_name: str,
     rank: str,
     surname: str,
-    objective_achieved: "ObjectiveAchieved | None",
-    objective_achieved_explanation: str,
 ) -> CommanderReport:
-    """Facilitator correction of a commander's identity fields and their own
-    objective-achieved self-assessment (spec: this field is always the
-    commander's own verbatim answer, never AI-judged — this only lets the
-    facilitator fix a transcription error, not override the commander's
-    assessment on their behalf without their say-so)."""
+    """Facilitator correction of a commander's identity fields (transcription
+    fixes — callsign, unit name, rank, surname)."""
     report.callsign = callsign.strip()
     report.unit_name = unit_name.strip()
     report.rank = rank.strip()
     report.surname = surname.strip()
-    report.objective_achieved = objective_achieved
-    report.objective_achieved_explanation = objective_achieved_explanation.strip()
     session.commit()
     session.refresh(report)
     return report
@@ -152,6 +147,13 @@ def update_discussion_point(session: Session, dp: DiscussionPoint, title: str, d
     return dp
 
 
+def update_discussion_point_notes(session: Session, dp: DiscussionPoint, text: str) -> DiscussionPoint:
+    dp.facilitator_notes = text.strip()
+    session.commit()
+    session.refresh(dp)
+    return dp
+
+
 def delete_discussion_point(session: Session, dp: DiscussionPoint) -> None:
     session.delete(dp)
     session.commit()
@@ -184,6 +186,38 @@ def update_positive_finding(session: Session, pf: PositiveFinding, title: str, d
 
 def delete_positive_finding(session: Session, pf: PositiveFinding) -> None:
     session.delete(pf)
+    session.commit()
+
+
+def add_manual_werkpunt(session: Session, incident: Incident, content: str) -> Observation:
+    """Werkpunten are otherwise a direct, unfiltered pull-through of the
+    form's "Wat kon beter" section — a manually-added one is the one
+    exception, not tied to any single commander's report (same pattern as
+    add_manual_positive_finding)."""
+    obs = Observation(
+        incident_id=incident.id,
+        commander_report_id=None,
+        observation_type=ObservationType.HUMAN_OBSERVATION,
+        category=ObservationCategory.WENT_LESS_WELL,
+        content=content.strip(),
+        source_section="went_less_well",
+        created_by=CreatedBy.HUMAN,
+    )
+    session.add(obs)
+    session.commit()
+    session.refresh(obs)
+    return obs
+
+
+def update_werkpunt(session: Session, obs: Observation, content: str) -> Observation:
+    obs.content = content.strip()
+    session.commit()
+    session.refresh(obs)
+    return obs
+
+
+def delete_werkpunt(session: Session, obs: Observation) -> None:
+    session.delete(obs)
     session.commit()
 
 
@@ -292,6 +326,16 @@ def update_situation_summary(session: Session, incident: Incident, text: str) ->
 
 def finalize_incident(session: Session, incident: Incident) -> Incident:
     incident.status = IncidentStatus.FINALIZED
+    session.commit()
+    session.refresh(incident)
+    return incident
+
+
+def reopen_incident(session: Session, incident: Incident) -> Incident:
+    """Undoes finalize_incident — lifts the write lock so the facilitator
+    can correct something after archiving. Deliberate manual action, not
+    exposed anywhere except the Definitieve AAR page."""
+    incident.status = IncidentStatus.IN_REVIEW
     session.commit()
     session.refresh(incident)
     return incident

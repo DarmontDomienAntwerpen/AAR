@@ -4,8 +4,9 @@ from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
 from aar.models import IncidentStatus, IncidentType
-from aar.services.incident_service import list_incidents
-from aar.web.deps import get_db
+from aar.services.incident_service import delete_incident, list_incidents
+from aar.web.deps import get_db, incident_or_404
+from aar.web.flash import redirect_with_flash
 from aar.web.templating import templates
 
 router = APIRouter()
@@ -40,3 +41,11 @@ def archive(
             "stats": stats,
         },
     )
+
+
+@router.post("/incidents/{incident_id}/delete")
+def delete(incident_id: int, session: Session = Depends(get_db)):
+    incident = incident_or_404(session, incident_id)
+    location = incident.location
+    delete_incident(session, incident)
+    return redirect_with_flash("/", f"Incident '{location}' verwijderd.")

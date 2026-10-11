@@ -37,10 +37,11 @@ def _make_report(session, incident) -> CommanderReport:
 
 
 def test_run_narrative_persists_to_incident(session, sample_incident):
-    """Only decision-relevant (DECISION/RESULT/OBJECTIVE/WENT_WELL/
-    WENT_LESS_WELL) moments feed the narrative — same crucial-category
-    filter as the deterministic fallback, so the summary stays short instead
-    of dumping every category (spec discussion: "veel te lang")."""
+    """Only the factual arc (OBSERVATION/ACTION/DECISION/RESULT/OBJECTIVE)
+    feeds the narrative — same crucial-category filter as the deterministic
+    fallback, so the summary stays short and stays factual (evaluative
+    went_well/went_less_well content belongs on its own tab, not blended
+    into "what happened")."""
     report = _make_report(session, sample_incident)
     obs = Observation(
         incident_id=sample_incident.id,

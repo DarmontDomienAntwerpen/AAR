@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from aar.models import AnalysisRunStatus, CommanderReport
 from aar.services.analysis_service import get_latest_analysis_run, trigger_analysis
-from aar.web.deps import get_db, incident_or_404
+from aar.web.deps import get_db, incident_or_404, writable_incident_or_404
 from aar.web.flash import redirect_with_flash
 from aar.web.templating import templates
 
@@ -42,7 +42,7 @@ def analysis_page(incident_id: int, request: Request, session: Session = Depends
 
 @router.post("/incidents/{incident_id}/analysis/run")
 def run_analysis_now(incident_id: int, session: Session = Depends(get_db)):
-    incident = incident_or_404(session, incident_id)
+    incident = writable_incident_or_404(session, incident_id)
     run = trigger_analysis(session, incident)
     if run.status == AnalysisRunStatus.SUCCESS:
         return redirect_with_flash(f"/incidents/{incident_id}/analysis", "Analyse voltooid.")

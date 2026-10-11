@@ -32,7 +32,6 @@ from aar.models import (
     CommanderReport,
     DispatchRecord,
     IncidentEvent,
-    ObjectiveAchieved,
     Observation,
     ObservationCategory,
     ObservationType,
@@ -111,13 +110,12 @@ def test_condition_b_uncertainty_detected_not_treated_as_fact(synthetic_run, ses
     assert all(o.observation_type != ObservationType.FACT for o in uncertain)
 
 
-# -- D: partially achieved objective -----------------------------------------
-def test_condition_d_partially_achieved_objective_recognised(synthetic_run, session, sample_incident):
-    """The template no longer asks for the overall doelbereik answer in the
-    report itself (spec: discussed live during the AAR instead) — so a fresh
-    parse correctly has no opinion on it, and the facilitator's own
-    "gedeeltelijk bereikt" assessment for P12 is preserved verbatim once
-    entered, not silently dropped or reinterpreted."""
+# -- D: facilitator identity correction ---------------------------------------
+def test_condition_d_facilitator_can_correct_identity_fields(synthetic_run, session, sample_incident):
+    """Per-commander "doel behaald" tracking was dropped entirely (never used
+    in real facilitation — always either stale demo data or left unset) —
+    this now just verifies the facilitator's transcription-correction path
+    for identity fields still works."""
     from aar.services.aar_service import update_commander_identity
 
     p12 = (
@@ -125,21 +123,18 @@ def test_condition_d_partially_achieved_objective_recognised(synthetic_run, sess
         .filter_by(incident_id=sample_incident.id, callsign="P12")
         .one()
     )
-    assert p12.objective_achieved is None
 
     update_commander_identity(
         session,
         p12,
         callsign=p12.callsign,
-        unit_name=p12.unit_name,
+        unit_name="1ste Hulpcentrum (gecorrigeerd)",
         rank=p12.rank,
         surname=p12.surname,
-        objective_achieved=ObjectiveAchieved.GEDEELTELIJK,
-        objective_achieved_explanation="Doel gedeeltelijk bereikt.",
     )
 
     reloaded = session.query(CommanderReport).filter_by(id=p12.id).one()
-    assert reloaded.objective_achieved == ObjectiveAchieved.GEDEELTELIJK
+    assert reloaded.unit_name == "1ste Hulpcentrum (gecorrigeerd)"
 
 
 # -- F: hidden pattern across reports -----------------------------------------

@@ -199,6 +199,8 @@ class MockLLMProvider(LLMProvider):
             return json.dumps(self._lessons(payload))
         if title == "SituationNarrativeOutput":
             return json.dumps(self._narrative(payload))
+        if title == "TextCleanupOutput":
+            return json.dumps(self._cleanup(user_prompt))
 
         logger.warning("MockLLMProvider has no rule set for schema %r; returning empty result.", title)
         return json.dumps({})
@@ -206,11 +208,19 @@ class MockLLMProvider(LLMProvider):
     # -- Stage 1: extraction --------------------------------------------
     def _extraction(self, payload: dict) -> dict:
         from aar.schemas.constants import SECTION_TO_CATEGORY
+        from aar.schemas.ingestion import COMMANDER_REPORT_SECTION_KEYS
 
         items = []
         for section_key, text in (payload.get("sections") or {}).items():
+            # Legacy pre-template-revision section keys (e.g. "narrative",
+            # "evaluation") aren't valid source_section values any more —
+            # fall back to "other" for those so old stored reports still
+            # extract cleanly.
+            source_section = section_key if section_key in COMMANDER_REPORT_SECTION_KEYS else "other"
             if section_key == "actions":
-                items.extend(_extraction_items_for_actions(text))
+                for item in _extraction_items_for_actions(text):
+                    item["source_section"] = source_section
+                    items.append(item)
                 continue
             category = SECTION_TO_CATEGORY.get(section_key, ObservationCategory.OTHER)
             for sentence in _split_sentences(text):
@@ -227,6 +237,7 @@ class MockLLMProvider(LLMProvider):
                     {
                         "content": sentence,
                         "source_passage": sentence,
+                        "source_section": source_section,
                         "observation_type": obs_type.value,
                         "category": effective_category.value,
                         "reported_time_text": time_match.group(0) if time_match else None,
@@ -358,7 +369,7 @@ class MockLLMProvider(LLMProvider):
             ai_observations.append(
                 {
                     "content": (
-                        "Mogelijk patroon: meerdere commandantenverslagen bevatten "
+                        "Mogelijk patroon: meerdere bevelvoerdersverslagen bevatten "
                         "veronderstellingen, onzekerheden of tegenstrijdigheden over "
                         "gerelateerde momenten — mogelijk de moeite waard om te bespreken."
                     ),
@@ -449,3 +460,12 @@ class MockLLMProvider(LLMProvider):
                 blocks.append(event.get("title", "") + " — " + " ".join(lines))
         narrative = "\n\n".join(blocks) if blocks else "Geen incidentmomenten beschikbaar voor een situatieschets."
         return {"narrative": narrative}
+
+    # -- on-demand text cleanup --------------------------------------------
+    def _cleanup(self, user_prompt: str) -> dict:
+        """Honest no-op: proofreading/typo-fixing needs real language
+        understanding this mock doesn't have — return the text unchanged
+        rather than pretending to improve it."""
+        marker = "Op te schonen tekst:\n\n"
+        text = user_prompt.split(marker, 1)[1] if marker in user_prompt else user_prompt
+        return {"text": text.strip()}

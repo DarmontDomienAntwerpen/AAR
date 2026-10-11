@@ -45,3 +45,10 @@ def finalize(incident_id: int, session: Session = Depends(get_db)):
     incident = incident_or_404(session, incident_id)
     aar_service.finalize_incident(session, incident)
     return redirect_with_flash(f"/incidents/{incident_id}/final", "AAR gemarkeerd als afgerond.")
+
+
+@router.post("/incidents/{incident_id}/final/reopen")
+def reopen(incident_id: int, session: Session = Depends(get_db)):
+    incident = incident_or_404(session, incident_id)
+    aar_service.reopen_incident(session, incident)
+    return redirect_with_flash(f"/incidents/{incident_id}/final", "AAR heropend — aanpassingen zijn weer mogelijk.")

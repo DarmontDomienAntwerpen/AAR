@@ -16,13 +16,21 @@
   </a>
 </div>
 
-<div class="grid grid-cols-5 gap-3 mb-6">
+{% if incident.status.value == "finalized" %}
+<div class="mb-6 flex items-center gap-2.5 rounded-[10px] border border-emerald-200 bg-emerald-50 px-4 py-3">
+  {{ icons.icon('check-circle', 'w-4 h-4 text-emerald-600 shrink-0') }}
+  <p class="text-[12.5px] text-emerald-800">
+    Deze AAR is afgerond en zit in het archief — enkel bekijken, geen aanpassingen meer mogelijk.
+  </p>
+</div>
+{% endif %}
+
+<div class="grid grid-cols-4 gap-3 mb-6">
   {% for label, value, icon_name, color in [
-    ("Commandanten", commander_reports|length, "users", "slate"),
-    ("Incidentmomenten", events|length, "clock", "accent"),
-    ("Bespreekpunten", discussion_points|length, "warning", "amber"),
+    ("Bevelvoerders", commander_reports|length, "users", "slate"),
     ("Positieve punten", positive_findings|length, "check-circle", "emerald"),
-    ("Leerpunten", lessons|length, "sparkle", "indigo"),
+    ("Werkpunten", (improvement_notes_by_commander|map(attribute='1')|map('length')|sum), "pencil", "orange"),
+    ("Te bespreken/Leerpunten", (discussion_points|length ~ "/" ~ lessons|length), "warning", "amber"),
   ] %}
   <div class="relative rounded-[11px] border border-{{ color }}-200 bg-{{ color }}-50 px-4 py-3.5 shadow-card">
     <span class="absolute top-3 right-3 flex h-6 w-6 items-center justify-center rounded-[7px] bg-{{ color }}-600 text-white">
@@ -34,16 +42,17 @@
   {% endfor %}
 </div>
 
-<div class="border-b border-slate-200 mb-7">
-  <nav class="flex gap-6 -mb-px">
+<div class="mb-7">
+  <nav class="flex flex-wrap gap-2">
     {% set effective_tab = "bespreken" if tab == "leerpunten" else tab %}
-    {% for key, label in [("overzicht","Overzicht"), ("verslagen","Verslagen"), ("middelen","Middelen"), ("waarnemingen","Waarnemingen & acties"), ("verloop","Incidentverloop"), ("bespreken","Te bespreken/Leerpunten"), ("positief","Positieve punten")] %}
+    {% for key, label in [("overzicht","Overzicht"), ("middelen","Middelen"), ("waarnemingen","Waarnemingen & acties"), ("verloop","Incidentverloop"), ("positief","Positieve punten"), ("werkpunten","Werkpunten"), ("bespreken","Te bespreken/Leerpunten"), ("extra","Extra opmerkingen")] %}
     <a href="/incidents/{{ incident.id }}/aar?tab={{ key }}"
-       class="border-b-2 pb-2.5 text-[13px] font-medium transition
-              {{ 'border-ink-900 text-ink-900' if effective_tab == key else 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300' }}">
+       class="rounded-md border px-3.5 py-2 text-[13px] font-medium transition
+              {{ 'border-ink-900 bg-ink-900 text-white' if effective_tab == key else 'border-slate-300 bg-white text-slate-600 hover:border-slate-400 hover:bg-slate-50' }}">
       {{ label }}
-      {% if key == "bespreken" and (discussion_points or lessons) %}<span class="ml-1 text-[11px] text-slate-400 tabular">{{ discussion_points|length }}/{{ lessons|length }}</span>{% endif %}
-      {% if key == "positief" and positive_findings %}<span class="ml-1 text-[11px] text-slate-400 tabular">{{ positive_findings|length }}</span>{% endif %}
+      {% if key == "bespreken" and (discussion_points or lessons) %}<span class="ml-1 text-[11px] tabular {{ 'text-white/70' if effective_tab == key else 'text-slate-400' }}">{{ discussion_points|length }}/{{ lessons|length }}</span>{% endif %}
+      {% if key == "positief" and positive_findings %}<span class="ml-1 text-[11px] tabular {{ 'text-white/70' if effective_tab == key else 'text-slate-400' }}">{{ positive_findings|length }}</span>{% endif %}
+      {% if key == "werkpunten" and improvement_notes_by_commander %}<span class="ml-1 text-[11px] tabular {{ 'text-white/70' if effective_tab == key else 'text-slate-400' }}">{{ improvement_notes_by_commander|map(attribute='1')|map('length')|sum }}</span>{% endif %}
     </a>
     {% endfor %}
   </nav>
@@ -51,18 +60,20 @@
 
 {% if tab == "overzicht" %}
   {% include "aar/_overzicht.html" %}
-{% elif tab == "verslagen" %}
-  {% include "aar/_verslagen.html" %}
 {% elif tab == "middelen" %}
   {% include "aar/_middelen.html" %}
 {% elif tab == "waarnemingen" %}
   {% include "aar/_waarnemingen.html" %}
 {% elif tab == "verloop" %}
   {% include "aar/_verloop.html" %}
+{% elif tab == "extra" %}
+  {% include "aar/_extra_opmerkingen.html" %}
 {% elif tab == "bespreken" or tab == "leerpunten" %}
   {% include "aar/_bespreken_leerpunten.html" %}
 {% elif tab == "positief" %}
   {% include "aar/_positief.html" %}
+{% elif tab == "werkpunten" %}
+  {% include "aar/_werkpunten.html" %}
 {% endif %}
 
 {% endblock %}

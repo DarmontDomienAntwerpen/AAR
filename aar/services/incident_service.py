@@ -3,10 +3,14 @@ Streamlit layer — pages call these functions."""
 from __future__ import annotations
 
 import datetime as dt
+import shutil
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from aar.analysis.cleanup import run_cleanup
+from aar.config.settings import get_settings
+from aar.llm.base import LLMProvider
 from aar.models import Incident, IncidentStatus, IncidentType
 from aar.schemas.forms import IncidentCreateForm
 
@@ -87,8 +91,43 @@ def update_incident_details(
 
 def update_initial_call_notes(session: Session, incident: Incident, text: str) -> Incident:
     """Facilitator's free-text notes on what was known from the initial
-    dispatch call — always human-authored, never touched by (re-)analysis."""
+    dispatch call — always human-authored, never touched by automatic
+    (re-)analysis (only by the explicit cleanup action below, on request)."""
     incident.initial_call_notes = text.strip()
     session.commit()
     session.refresh(incident)
     return incident
+
+
+def clean_up_description(session: Session, incident: Incident, provider: LLMProvider) -> Incident:
+    """On-demand proofreading pass on the incident description — typos and
+    structure only, triggered explicitly by the facilitator, never as part
+    of the automatic analysis pipeline."""
+    if incident.description.strip():
+        incident.description = run_cleanup(provider, incident.description).strip()
+        session.commit()
+        session.refresh(incident)
+    return incident
+
+
+def clean_up_initial_call_notes(session: Session, incident: Incident, provider: LLMProvider) -> Incident:
+    """Same on-demand cleanup, for the initial-call notes."""
+    if incident.initial_call_notes.strip():
+        incident.initial_call_notes = run_cleanup(provider, incident.initial_call_notes).strip()
+        session.commit()
+        session.refresh(incident)
+    return incident
+
+
+def delete_incident(session: Session, incident: Incident) -> None:
+    """Permanently removes an incident and everything under it (reports,
+    observations, events, findings, uploaded source files) — cascade is
+    configured on every Incident relationship, so deleting the row deletes
+    the lot. Also removes the incident's upload directory from disk so no
+    orphaned files are left behind."""
+    incident_id = incident.id
+    session.delete(incident)
+    session.commit()
+
+    uploads_dir = get_settings().project_root / "data" / "uploads" / str(incident_id)
+    shutil.rmtree(uploads_dir, ignore_errors=True)

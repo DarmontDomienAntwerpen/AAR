@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from aar.config.logging_setup import get_logger
 from aar.config.settings import get_settings
-from aar.models import Incident, IncidentEvent, ParseStatus, SourceDocument, SourceDocumentType
+from aar.models import CommanderReport, Incident, IncidentEvent, ParseStatus, SourceDocument, SourceDocumentType
 from aar.services.errors import DuplicateSourceError
 
 logger = get_logger("services.media_service")
@@ -90,6 +90,18 @@ def set_caption(session: Session, doc: SourceDocument, caption: str) -> SourceDo
 
 def link_to_event(session: Session, doc: SourceDocument, event: IncidentEvent | None) -> SourceDocument:
     doc.event_id = event.id if event is not None else None
+    session.commit()
+    session.refresh(doc)
+    return doc
+
+
+def link_to_commander_report(
+    session: Session, doc: SourceDocument, report: CommanderReport | None
+) -> SourceDocument:
+    """Pins a photo/plan to a specific commander's own account (shown in
+    their "Waarnemingen & acties" overlay) — independent of event_id, see
+    SourceDocument.linked_commander_report_id."""
+    doc.linked_commander_report_id = report.id if report is not None else None
     session.commit()
     session.refresh(doc)
     return doc

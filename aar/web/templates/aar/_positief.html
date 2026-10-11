@@ -1,47 +1,63 @@
 {% import "_components.html" as c %}
 {% import "_icons.html" as icons %}
 
+<h2 class="text-[13px] font-semibold text-ink-900 mb-1">Positieve punten per bevelvoerder</h2>
+<p class="text-[11.5px] text-slate-500 mb-4">Wat goed ging, chronologisch per bevelvoerder. Hover over een punt om te bewerken of te verwijderen.</p>
+
 {% if not positive_findings %}
   {{ c.empty_state("Nog geen positieve punten.") }}
+{% else %}
+
+{% for report, items in positive_findings_by_commander %}
+<div class="mb-5">
+  <div class="flex items-center gap-2 mb-2">
+    {% if report %}
+    <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-ink-900 text-white text-[11px] font-mono font-bold">
+      {{ report.callsign[:3] if report.callsign else "?" }}
+    </span>
+    <span class="text-[13.5px] font-semibold text-ink-900">{{ report.rank }} {{ report.surname }}</span>
+    <span class="text-[12px] font-semibold text-slate-600">{{ report.callsign }}</span>
+    {% else %}
+    <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-ink-900 text-white">
+      {{ icons.icon('users', 'w-3.5 h-3.5') }}
+    </span>
+    <span class="text-[13.5px] font-semibold text-ink-900">Gedeeld tussen bevelvoerders</span>
+    {% endif %}
+  </div>
+  <div class="rounded-md border border-emerald-200 bg-emerald-50/60 p-4">
+    <ul class="space-y-1.5">
+      {% for pf in items %}
+      <li class="text-[13px] text-slate-700 leading-snug group">
+        <div class="flex items-start gap-1.5">
+          <span class="text-emerald-500 mt-[1px]">&bull;</span>
+          <span id="pf-{{ pf.id }}-view" class="flex-1">
+            <span class="font-semibold text-ink-900">{{ pf.title }}</span>{% if pf.description %} <span class="text-slate-600">&mdash; {{ pf.description }}</span>{% endif %}
+          </span>
+          <div class="shrink-0 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition">
+            <button type="button" onclick="toggleInlineEdit('pf-{{ pf.id }}')" class="text-slate-300 hover:text-accent-600 transition">{{ icons.icon('pencil', 'w-3.5 h-3.5') }}</button>
+            <form method="post" action="/incidents/{{ incident.id }}/aar/positive-findings/{{ pf.id }}/delete"
+                  onsubmit="return confirm('Dit positieve punt verwijderen?')">
+              <button type="submit" class="text-slate-300 hover:text-rose-600 transition">{{ icons.icon('trash', 'w-3.5 h-3.5') }}</button>
+            </form>
+          </div>
+        </div>
+        <form id="pf-{{ pf.id }}-edit" method="post" action="/incidents/{{ incident.id }}/aar/positive-findings/{{ pf.id }}/update" class="hidden mt-1.5 ml-4 space-y-1.5">
+          <input type="text" name="title" value="{{ pf.title }}" required
+                 class="w-full rounded-md border border-slate-300 px-2.5 py-1.5 text-[12.5px] font-semibold text-ink-900 focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500">
+          <textarea name="description" rows="2"
+                    class="w-full rounded-md border border-slate-300 px-2.5 py-1.5 text-[12.5px] focus:border-accent-500 focus:outline-none focus:ring-1 focus:ring-accent-500">{{ pf.description }}</textarea>
+          <button type="submit" class="rounded-md border border-slate-300 bg-white px-2.5 py-1 text-[11.5px] font-semibold text-slate-700 hover:bg-slate-50 transition">Opslaan</button>
+        </form>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+{% endfor %}
+
 {% endif %}
 
-<div class="grid grid-cols-2 gap-3.5 items-start">
-  {% for pf in positive_findings %}
-  <div class="rounded-[13px] border border-slate-200 border-l-4 border-l-emerald-400 bg-white p-5 shadow-card">
-    <div class="flex items-start justify-between gap-4 mb-2">
-      <div class="flex flex-wrap items-center gap-1.5">
-        {{ c.badge("Positief punt", "emerald") }}
-        {% if pf.is_human_added %}{{ c.badge("Door facilitator", "sky") }}{% endif %}
-      </div>
-      <form method="post" action="/incidents/{{ incident.id }}/aar/positive-findings/{{ pf.id }}/delete"
-            onsubmit="return confirm('Dit positieve punt verwijderen?')">
-        <button type="submit" class="text-slate-300 hover:text-rose-600 transition shrink-0">{{ icons.icon('trash', 'w-4 h-4') }}</button>
-      </form>
-    </div>
-
-    <div class="flex items-center justify-between gap-4 mb-2.5">
-      {{ c.attributed_to(pf.observation_ids, observations_by_id) }}
-      {% if pf.event %}
-      <span class="text-[11.5px] text-slate-400">Moment: {{ pf.event.title }}</span>
-      {% endif %}
-    </div>
-
-    <form method="post" action="/incidents/{{ incident.id }}/aar/positive-findings/{{ pf.id }}/update" class="space-y-2">
-      <input type="text" name="title" value="{{ pf.title }}" title="{{ pf.title }}"
-             class="w-full rounded-md border border-slate-200 bg-slate-50/50 px-3 py-2 text-[13.5px] font-semibold text-ink-900 overflow-hidden text-ellipsis focus:border-accent-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-accent-500">
-      <textarea name="description" rows="5"
-                class="w-full rounded-md border border-slate-200 bg-slate-50/50 px-3 py-2 text-[13px] leading-relaxed text-slate-600 focus:border-accent-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-accent-500">{{ pf.description }}</textarea>
-      <button type="submit" class="rounded-md border border-slate-300 px-3 py-1.5 text-[12px] font-semibold text-slate-700 hover:bg-slate-50 transition">
-        Opslaan
-      </button>
-    </form>
-
-    {{ c.evidence(pf.observation_ids, observations_by_id) }}
-  </div>
-  {% endfor %}
-</div>
-
-<details class="mt-5 rounded-lg border border-dashed border-slate-300 p-5">
+<details class="mt-2 rounded-lg border border-dashed border-slate-300 p-5">
   <summary class="cursor-pointer text-[13px] font-medium text-slate-600 select-none">+ Positief punt handmatig toevoegen</summary>
   <form method="post" action="/incidents/{{ incident.id }}/aar/positive-findings" class="mt-3 space-y-2">
     <input type="text" name="title" required placeholder="Titel"
@@ -51,3 +67,12 @@
     <button type="submit" class="rounded-md bg-ink-900 px-3.5 py-2 text-[13px] font-semibold text-white hover:bg-ink-800 transition">Toevoegen</button>
   </form>
 </details>
+
+<script>
+  function toggleInlineEdit(id) {
+    var view = document.getElementById(id + '-view');
+    var form = document.getElementById(id + '-edit');
+    if (view) { view.classList.toggle('hidden'); }
+    if (form) { form.classList.toggle('hidden'); }
+  }
+</script>

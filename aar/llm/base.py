@@ -18,6 +18,26 @@ from aar.config.logging_setup import get_logger
 
 logger = get_logger("llm.base")
 
+
+def _repair_double_encoded_json(value):
+    """Anthropic's forced tool-use occasionally serialises a nested
+    list/object field as a JSON *string* instead of the actual list/object
+    (seen on ReconstructionOutput.events under load) — a provider quirk,
+    not a real schema mismatch. Recursively un-stringify any string value
+    that itself parses as JSON, so a transient encoding glitch doesn't
+    burn a retry (or fail the whole call) over content that was actually
+    present and correct."""
+    if isinstance(value, dict):
+        return {k: _repair_double_encoded_json(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_repair_double_encoded_json(v) for v in value]
+    if isinstance(value, str) and value[:1] in "[{":
+        try:
+            return _repair_double_encoded_json(json.loads(value))
+        except json.JSONDecodeError:
+            return value
+    return value
+
 TModel = TypeVar("TModel", bound=BaseModel)
 
 
@@ -47,7 +67,7 @@ class LLMProvider(ABC):
                 previous_error=str(last_error) if last_error else None,
             )
             try:
-                data = json.loads(raw)
+                data = _repair_double_encoded_json(json.loads(raw))
                 return response_model.model_validate(data)
             except (json.JSONDecodeError, ValidationError) as exc:
                 last_error = exc

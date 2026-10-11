@@ -6,9 +6,20 @@ from asserting things that aren't actually in the report.
 """
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, Field, field_validator
 
 from aar.models.enums import ObservationCategory, ObservationType
+
+# Must match aar.schemas.ingestion.COMMANDER_REPORT_SECTION_KEYS exactly —
+# the literal form-section key an item came from, independent of whatever
+# semantic category the LLM also assigns it. Deliberately separate from
+# `category`: a sentence from "Overige opmerkingen" that reads like an
+# assessment still needs to display under Overige opmerkingen, not get
+# pulled into a different topic box just because of its semantic content
+# (spec discussion: "de topics moeten dezelfde zijn als in de form").
+SourceSection = Literal["situation", "actions", "went_well", "went_less_well", "other", "difficulties"]
 
 
 class ExtractedItem(BaseModel):
@@ -21,6 +32,9 @@ class ExtractedItem(BaseModel):
     )
     source_passage: str = Field(
         min_length=1, description="Verbatim excerpt from the report supporting this item"
+    )
+    source_section: SourceSection = Field(
+        description="Welke sectie uit de GEGEVENS dit item kwam (exacte sleutelnaam, bv. 'actions')."
     )
     observation_type: ObservationType
     category: ObservationCategory = ObservationCategory.OTHER

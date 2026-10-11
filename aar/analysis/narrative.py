@@ -31,35 +31,62 @@ _ADDENDUM = """\
 TAAK: Een korte situatieschets schrijven van het volledige incident.
 
 Je krijgt de decision-relevante incidentmomenten (waarnemingen bij aankomst, \
-beslissingen, resultaten, doelstelling, wat ging goed/minder goed), \
-chronologisch geordend, elk met het perspectief van de betrokken \
-commandant(en). Schrijf hieruit een kort samenhangend verhaal — MAXIMAAL \
-4-6 zinnen in totaal — dat een lezer die niets van het incident weet in \
-een oogopslag laat begrijpen wat er in totaal gebeurde, van aankomst tot \
-afronding. Dit is een dashboard-samenvatting, geen volledig verslag: kies \
-alleen de belangrijkste lijn, niet elk detail. Het volledige verhaal per \
-bevelvoerder staat al elders in de tool.
+beslissingen, acties, resultaten, doelstelling — puur de feitelijke lijn, \
+GEEN evaluatie), chronologisch geordend, elk met het perspectief van de \
+betrokken bevelvoerder(en). Schrijf hieruit een kort samenhangend verhaal — \
+MAXIMAAL 4-6 zinnen in totaal — dat een lezer die niets van het incident \
+weet in een oogopslag laat begrijpen wat er in totaal gebeurde, van \
+aankomst tot afronding. Dit is een dashboard-samenvatting, geen volledig \
+verslag: kies alleen de belangrijkste lijn, niet elk detail. Het volledige \
+verhaal per bevelvoerder staat al elders in de tool; wat ging goed/minder \
+goed en bespreekpunten staan op hun eigen tabblad — die horen hier niet in.
 
-Verdeel de tekst in 2 à 3 korte alinea's, met een lege regel ertussen \
-(dus een dubbele newline \\n\\n in de output-string) — niet als één dicht \
-blok tekst: (1) wat er bij aankomst werd vastgesteld, (2) de \
-kernbeslissing(en) en actie(s), (3) het resultaat. Elke alinea is 1-2 \
-zinnen, geen kopjes of opsommingstekens, gewoon lopende tekst per alinea.
+Verdeel de tekst in exact 3 korte alinea's, altijd in deze volgorde, met \
+een lege regel ertussen (dus een dubbele newline \\n\\n in de output-string) \
+— niet als één dicht blok tekst: (1) WAARNEMINGEN — wat er bij aankomst \
+werd vastgesteld, (2) ACTIES — de kernbeslissing(en) en actie(s), in de \
+volgorde waarin ze gebeurden, (3) RESULTATEN — wat daaruit volgde. Elke \
+alinea is 1-2 zinnen, geen kopjes of opsommingstekens, gewoon lopende tekst \
+per alinea.
 
 Hoe om te gaan met de verschillende bronnen:
-- Waar commandanten elkaar aanvullen (verschillende stukjes van hetzelfde \
+- Waar bevelvoerders elkaar aanvullen (verschillende stukjes van hetzelfde \
 geheel): voeg samen tot vloeiende tekst, zonder overal "volgens X" bij te \
 zetten — dat hoeft alleen waar het onderscheid ertoe doet.
-- Waar commandanten elkaar tegenspreken of een ander beeld hadden op \
-hetzelfde moment: kies GEEN kant en verzin geen verzoening — benoem het \
-verschil expliciet ("volgens P12 ..., terwijl P21 meldde dat ...").
+- Waar bevelvoerders elkaar ECHT tegenspreken (dezelfde plek/hetzelfde \
+moment, onverenigbare lezingen): kies GEEN kant en verzin geen verzoening \
+— benoem het verschil expliciet ("volgens P12 ..., terwijl P21 meldde dat \
+..."). Noem het NOOIT "tegenspraak" of "spreken elkaar tegen" als het \
+gewoon twee verschillende, best verenigbare feiten zijn — bv. twee \
+commandanten die een ANDERE locatie doorzochten en dus logischerwijze een \
+ander resultaat vonden, is geen tegenspraak, dat is gewoon twee aparte \
+zoekacties. Vraag jezelf af: gaat dit over exact dezelfde plek/hetzelfde \
+moment met onverenigbare beweringen? Zo niet, beschrijf het gewoon als wat \
+het is (twee acties, elk met hun eigen resultaat), zonder het woord \
+tegenspraak/tegenstrijdig erbij te zoeken.
 - Gebruik uitsluitend de meegegeven incidentmomenten als bron. Verzin geen \
 tijdstippen, gebeurtenissen, oorzaken of personen die niet in de gegevens \
 voorkomen. Als iets onduidelijk blijft, zeg dat expliciet in de tekst in \
 plaats van het stilzwijgend op te vullen.
 - Dit mag, in tegenstelling tot titels elders in de tool, gewone lopende \
 zinnen zijn — geen telegramstijl. De vaste afkortingen (HD/LD/SAR/SO/V+nummer) \
-blijven wel gelden.\
+blijven wel gelden.
+- Respecteer de volgorde waarin een bevelvoerder zijn eigen acties/beslissingen \
+opgeeft: die volgorde IS de tijdsvolgorde. Herschik acties van dezelfde \
+bevelvoerder niet naar wat dramatisch belangrijker lijkt — een actie die als \
+eerste genoemd wordt, gebeurde als eerste en hoort dus vooraan in het \
+verhaal, ook als een latere actie (bv. SAR) inhoudelijk opvallender is.
+- Pas op met kale getallen die niet naar een verdieping verwijzen (bv. \
+"ploeg 3 en 4", "nummer 3 van de ploeg") — laat het verduidelijkende woord \
+(ploeg/nummer/persoon/...) er altijd bijstaan. Zonder dat woord lijkt een \
+getal een verdieping (V+nummer), wat een schijncontradictie met andere \
+bronnen kan geven waar wél expliciet over verdiepingen gesproken wordt.
+- Laat concrete inzet van middelen/personeel nooit stilzwijgend weg, ook al \
+verkort je de rest: als een bevelvoerder vermeldt dat iets "met de hele ploeg" \
+of "met N personen" gebeurde, of expliciet de reden geeft (bv. "wegens de \
+lange afstand"), hoort dat erbij — dat is operationeel relevant (het toont \
+hoeveel capaciteit ergens aan vastzat), geen overbodig detail om in te \
+korten.\
 """
 
 
