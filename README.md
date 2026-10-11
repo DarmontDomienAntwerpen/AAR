@@ -6,7 +6,7 @@
 ![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
 ![Claude](https://img.shields.io/badge/Anthropic-Claude-D97757?logo=anthropic&logoColor=white)
 ![SQLite](https://img.shields.io/badge/SQLite-003B57?logo=sqlite&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-142_passing-brightgreen)
+[![Tests](https://github.com/DarmontDomienAntwerpen/AAR/actions/workflows/tests.yml/badge.svg)](https://github.com/DarmontDomienAntwerpen/AAR/actions/workflows/tests.yml)
 
 > **In short:** after a major fire, each commander writes their own report. A good After Action Review (AAR) compares all of them, but in practice that is done by hand, if at all. This tool reads all the reports, rebuilds one shared timeline, and proposes discussion points, lessons and improvements. Every point links back to the exact sentence it came from. A human facilitator stays in control and has the final word.
 >
