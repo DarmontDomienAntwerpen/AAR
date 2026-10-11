@@ -9,6 +9,8 @@
 ![Tests](https://img.shields.io/badge/tests-142_passing-brightgreen)
 
 > **In short:** after a major fire, each commander writes their own report. A good After Action Review (AAR) compares all of them, but in practice that is done by hand, if at all. This tool reads all the reports, rebuilds one shared timeline, and proposes discussion points, lessons and improvements. Every point links back to the exact sentence it came from. A human facilitator stays in control and has the final word.
+>
+> Built for fire services, but adaptable to any emergency service (police, EMS, civil protection) or any team that runs After Action Reviews: adapting it means changing the report template, the category labels and the prompts, which are kept in a few central files (`templates/`, `aar/schemas/constants.py`, `aar/ui/labels.py`, `aar/llm/prompts/`), not the analysis pipeline itself.
 
 ![Interactive AAR overview (synthetic demo incident)](docs/images/overview.png)
 
