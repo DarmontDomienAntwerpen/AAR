@@ -87,10 +87,10 @@ def build_reconstruction_payload(session: Session, incident: Incident) -> dict:
             Observation.incident_id == incident.id,
             Observation.observation_type.in_(_SOURCE_TYPES),
             Observation.commander_report_id.isnot(None),
-            # Incidentverloop is chronologisch: waarnemingen -> acties ->
-            # resultaten (+ doelstelling), niet evaluatie (wat ging
-            # goed/minder goed) — die horen op hun eigen tabblad, ook al
-            # blijven ze los beschikbaar voor de Bevindingen-stap hieronder.
+            # The incident timeline is chronological: observations -> actions ->
+            # results (+ objective), not evaluation (what went well / less
+            # well). Evaluations belong on their own tab, but remain available
+            # to the findings step below.
             Observation.category.in_(CRUCIAL_SUMMARY_CATEGORIES),
         )
         # Stable order = extraction order = the order each commander wrote
@@ -144,10 +144,10 @@ def _observation_positions(session: Session, incident: Incident) -> dict[int, tu
             Observation.incident_id == incident.id,
             Observation.observation_type.in_(_SOURCE_TYPES),
             Observation.commander_report_id.isnot(None),
-            # Incidentverloop is chronologisch: waarnemingen -> acties ->
-            # resultaten (+ doelstelling), niet evaluatie (wat ging
-            # goed/minder goed) — die horen op hun eigen tabblad, ook al
-            # blijven ze los beschikbaar voor de Bevindingen-stap hieronder.
+            # The incident timeline is chronological: observations -> actions ->
+            # results (+ objective), not evaluation (what went well / less
+            # well). Evaluations belong on their own tab, but remain available
+            # to the findings step below.
             Observation.category.in_(CRUCIAL_SUMMARY_CATEGORIES),
         )
         .order_by(Observation.commander_report_id, Observation.id)

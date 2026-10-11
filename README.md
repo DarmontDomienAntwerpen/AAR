@@ -25,7 +25,24 @@
 
 ![Reconstructed incident timeline, each moment linked to its sources](docs/images/timeline.png)
 
-*Screenshots show a fully synthetic demo incident. The interface is in Dutch, for Flemish fire services.*
+*Screenshots show a fully synthetic demo incident. The interface is in Dutch because its users are Flemish fire officers; the code, documentation and tests are in English.*
+
+<details>
+<summary>Interface glossary (Dutch → English)</summary>
+
+| On screen | Meaning |
+|---|---|
+| Interactieve AAR / Definitieve AAR | Interactive review / Final report |
+| Bevelvoerders | Commanders (incident officers) |
+| Overzicht · Middelen · Waarnemingen & acties | Overview · Resources · Observations & actions |
+| Incidentverloop | Incident timeline |
+| Positieve punten · Werkpunten | What went well · Points for improvement |
+| Te bespreken / Leerpunten | Discussion points / Lessons learned |
+| Extra opmerkingen | Additional remarks |
+| Bronnen · Analyse · Archief | Sources · Analysis · Archive |
+| Bron (4) | Linked to 4 source passages |
+| Eindbalans | Final outcome of the incident |
+</details>
 
 ## Responsible-AI rules (enforced in code)
 
