@@ -6,7 +6,7 @@
 ![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
 ![Claude](https://img.shields.io/badge/Anthropic-Claude-D97757?logo=anthropic&logoColor=white)
 ![SQLite](https://img.shields.io/badge/SQLite-003B57?logo=sqlite&logoColor=white)
-[![Tests](https://github.com/DarmontDomienAntwerpen/AAR/actions/workflows/tests.yml/badge.svg)](https://github.com/DarmontDomienAntwerpen/AAR/actions/workflows/tests.yml)
+[![Tests](https://github.com/DomienDarmontAntwerpen/AAR/actions/workflows/tests.yml/badge.svg)](https://github.com/DomienDarmontAntwerpen/AAR/actions/workflows/tests.yml)
 
 > **In short:** after a major fire, each commander writes their own report. A good After Action Review (AAR) compares all of them, but in practice that is done by hand, if at all. This tool reads all the reports, rebuilds one shared timeline, and proposes discussion points, lessons and improvements. Every point links back to the exact sentence it came from. A human facilitator stays in control and has the final word.
 >
@@ -93,7 +93,7 @@ The LLM sits behind a provider interface (`aar/llm/`). The default provider is a
 
 ### Installation
 ```bash
-git clone https://github.com/DarmontDomienAntwerpen/AAR.git
+git clone https://github.com/DomienDarmontAntwerpen/AAR.git
 cd AAR
 python3 -m venv .venv
 source .venv/bin/activate
@@ -150,4 +150,4 @@ Working end to end. Currently a single-team tool (one shared login, one SQLite d
 
 ## Author
 **Domien Darmont**, AI Engineer, Antwerp, Belgium
-GitHub: [@DarmontDomienAntwerpen](https://github.com/DarmontDomienAntwerpen)
+GitHub: [@DomienDarmontAntwerpen](https://github.com/DomienDarmontAntwerpen)
