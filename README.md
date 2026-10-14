@@ -12,7 +12,9 @@
 >
 > Built for fire services, but adaptable to any emergency service (police, EMS, civil protection) or any team that runs After Action Reviews: adapting it means changing the report template, the category labels and the prompts, which are kept in a few central files (`templates/`, `aar/schemas/constants.py`, `aar/ui/labels.py`, `aar/llm/prompts/`), not the analysis pipeline itself.
 
-![Reconstructed incident timeline: each moment shows which commanders were involved and, opened, exactly what each of them reported](docs/images/timeline.png)
+![AAR: the reconstructed timeline with each commander's own words as the source (left), the incident summary and the discussion points per commander (right)](docs/images/showcase.png)
+
+*Synthetic demo incident. The interface is in Dutch because its users are Flemish fire officers; the code, documentation and tests are in English.*
 
 ---
 
@@ -22,10 +24,6 @@
 2. **AI analysis**: extracts what each commander reported, reconstructs one chronological view of the incident, and proposes discussion points, positive findings, lessons and improvements.
 3. **Facilitated review**: an interactive debrief screen with per-commander findings side by side, a compare view, live notes, and full edit control.
 4. **Finalize**: a finished AAR is locked against further edits and stays searchable in the archive. It can be explicitly reopened if needed.
-
-![Discussion points per commander: assumptions and contradictions between reports, surfaced by the analysis for the debrief](docs/images/discussion.png)
-
-*Screenshots show a fully synthetic demo incident. The interface is in Dutch because its users are Flemish fire officers; the code, documentation and tests are in English.*
 
 <details>
 <summary>Interface glossary (Dutch → English)</summary>
@@ -149,8 +147,11 @@ More documentation:
 Working end to end. Currently a single-team tool (one shared login, one SQLite database). Before a wider rollout, the next steps are multi-user accounts, PostgreSQL and automated backups.
 
 ## Author
-**Domien Darmont**, AI Engineer, Antwerp, Belgium
-GitHub: [@DomienDarmontAntwerpen](https://github.com/DomienDarmontAntwerpen)
+**Domien Darmont**, AI Engineer, Antwerp, Belgium  
+GitHub: [@DomienDarmontAntwerpen](https://github.com/DomienDarmontAntwerpen)  
+LinkedIn: [Domien Darmont](https://www.linkedin.com/in/domien-darmont-b53b7640b/)
+
+A live demo or more information is available on request.
 
 ## License
 © 2026 Domien Darmont. All rights reserved.
