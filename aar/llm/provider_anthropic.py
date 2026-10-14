@@ -61,7 +61,12 @@ class AnthropicProvider(LLMProvider):
                     {
                         "name": tool_name,
                         "description": f"Retourneer het resultaat als {tool_name}.",
-                        "input_schema": schema,
+                        # strict + transform_schema: the API itself guarantees the
+                        # output matches the schema (no missing required fields).
+                        # Constraints strict mode can't express (minLength, ...)
+                        # are still enforced by the Pydantic validation in base.py.
+                        "input_schema": anthropic.transform_schema(schema),
+                        "strict": True,
                     }
                 ],
                 tool_choice={"type": "tool", "name": tool_name},

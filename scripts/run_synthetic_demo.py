@@ -21,6 +21,7 @@ import datetime as dt  # noqa: E402
 import tempfile  # noqa: E402
 
 from aar.config.logging_setup import configure_logging, get_logger  # noqa: E402
+from aar.config.settings import get_settings  # noqa: E402
 from aar.db.session import get_engine, get_session, init_db  # noqa: E402
 from aar.models import CommanderReport, IncidentType, ObjectiveAchieved  # noqa: E402
 from aar.schemas.forms import IncidentCreateForm  # noqa: E402
@@ -76,7 +77,7 @@ def main() -> None:
         doc = ingest_dispatch_excel(session, incident, dispatch_path.read_bytes(), dispatch_path.name)
         print(f"  Ingested {dispatch_path.name}: {doc.parse_status.value}")
 
-    print("Running analysis pipeline (mock LLM provider)...")
+    print(f"Running analysis pipeline ({get_settings().llm_provider} LLM provider)...")
     run = trigger_analysis(session, incident)
     print(f"Analysis run status: {run.status.value}")
     if run.error_message:
