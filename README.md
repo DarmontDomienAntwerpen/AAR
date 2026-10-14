@@ -12,7 +12,7 @@
 >
 > Built for fire services, but adaptable to any emergency service (police, EMS, civil protection) or any team that runs After Action Reviews: adapting it means changing the report template, the category labels and the prompts, which are kept in a few central files (`templates/`, `aar/schemas/constants.py`, `aar/ui/labels.py`, `aar/llm/prompts/`), not the analysis pipeline itself.
 
-![Interactive AAR overview (synthetic demo incident)](docs/images/overview.png)
+![Reconstructed incident timeline: each moment shows which commanders were involved and, opened, exactly what each of them reported](docs/images/timeline.png)
 
 ---
 
@@ -23,7 +23,7 @@
 3. **Facilitated review**: an interactive debrief screen with per-commander findings side by side, a compare view, live notes, and full edit control.
 4. **Finalize**: a finished AAR is locked against further edits and stays searchable in the archive. It can be explicitly reopened if needed.
 
-![Reconstructed incident timeline, each moment linked to its sources](docs/images/timeline.png)
+![Discussion points per commander: assumptions and contradictions between reports, surfaced by the analysis for the debrief](docs/images/discussion.png)
 
 *Screenshots show a fully synthetic demo incident. The interface is in Dutch because its users are Flemish fire officers; the code, documentation and tests are in English.*
 
@@ -151,3 +151,8 @@ Working end to end. Currently a single-team tool (one shared login, one SQLite d
 ## Author
 **Domien Darmont**, AI Engineer, Antwerp, Belgium
 GitHub: [@DomienDarmontAntwerpen](https://github.com/DomienDarmontAntwerpen)
+
+## License
+© 2026 Domien Darmont. All rights reserved.
+
+The source code of this project is published for viewing and evaluation only. No permission is granted to copy, modify, distribute or use it, in whole or in part, without prior written consent from the author.
