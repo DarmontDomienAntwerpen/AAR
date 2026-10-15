@@ -17,6 +17,7 @@ CLAUDE.md
 
 # Project-specific
 data/*.db
+data/*.db.bak*
 data/uploads/
 data/.session_secret
 scripts/screenshots/
