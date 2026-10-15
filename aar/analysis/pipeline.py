@@ -25,7 +25,6 @@ from aar.models import (
     HumanCorrection,
     Incident,
     IncidentStatus,
-    ParseStatus,
 )
 
 logger = get_logger("analysis.pipeline")
@@ -46,9 +45,11 @@ def run_analysis(session: Session, incident: Incident, provider: LLMProvider) ->
         reports = session.query(CommanderReport).filter_by(incident_id=incident.id).all()
         if not reports:
             raise ValueError("Geen bevelvoerdersverslagen beschikbaar om te analyseren.")
+        # Always re-extract: skipping already-parsed reports meant a re-analysis
+        # kept extractions from an earlier run, possibly made by another
+        # provider (e.g. the mock). run_extraction replaces only AI-created
+        # observations; facilitator-added ones are kept.
         for report in reports:
-            if report.extraction_status == ParseStatus.PARSED:
-                continue
             run_extraction(session, report, provider)
 
         run.stage_reached = "reconstruction"
