@@ -13,6 +13,26 @@ from aar.llm.base import LLMProvider
 logger = get_logger("llm.anthropic")
 
 
+def _require_all_fields(schema):
+    """Mark every property of every object as required.
+
+    With strict tool use the model may leave out any property that is not
+    required, and a Pydantic field with a default is not required. In
+    practice whole lists (positive_findings, discussion_points,
+    observation_ids) then came back missing and silently became empty.
+    Requiring every field makes the model fill each one explicitly, with an
+    empty list or null where nothing applies."""
+    if isinstance(schema, dict):
+        if schema.get("type") == "object" and "properties" in schema:
+            schema["required"] = list(schema["properties"])
+        for value in schema.values():
+            _require_all_fields(value)
+    elif isinstance(schema, list):
+        for item in schema:
+            _require_all_fields(item)
+    return schema
+
+
 class LLMProviderError(Exception):
     """Raised on a provider/network/API-level failure (not a validation failure)."""
 
@@ -65,7 +85,7 @@ class AnthropicProvider(LLMProvider):
                         # output matches the schema (no missing required fields).
                         # Constraints strict mode can't express (minLength, ...)
                         # are still enforced by the Pydantic validation in base.py.
-                        "input_schema": anthropic.transform_schema(schema),
+                        "input_schema": _require_all_fields(anthropic.transform_schema(schema)),
                         "strict": True,
                     }
                 ],
