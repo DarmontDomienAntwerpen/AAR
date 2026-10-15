@@ -10,7 +10,7 @@
 
 > **In short:** after a major fire, each commander writes their own report. A good After Action Review (AAR) compares all of them, but in practice that is done by hand, if at all. This tool reads all the reports, rebuilds one shared timeline, and proposes discussion points, lessons and improvements. Every point links back to the exact sentence it came from. A human facilitator stays in control and has the final word.
 >
-> Built for fire services, but adaptable to any team that reviews its work together: other emergency services (police, EMS, civil protection), but also administrative, project or management teams that hold debriefs, evaluation meetings or After Action Reviews. Adapting it means changing the report template, the category labels and the prompts, which are kept in a few central files (`templates/`, `aar/schemas/constants.py`, `aar/ui/labels.py`, `aar/llm/prompts/`), not the analysis pipeline itself.
+> Built for fire services, but adaptable to any team that reviews its work together, from police and EMS to administrative or project teams that hold debriefs and evaluation meetings. Only the report template, labels and prompts change (see [Adapting AAR](#adapting-aar-to-another-team)).
 
 ![AAR: the incident summary and the reconstructed timeline with each commander's own account as the source (top), and the discussion points per commander and across commanders (bottom)](docs/images/showcase.png)
 
@@ -42,6 +42,7 @@
 | Bronnen · Analyse · Archief | Sources · Analysis · Archive |
 | Bron (4) | Linked to 4 source passages |
 | Eindbalans | Final outcome of the incident |
+| 6/2 (Te bespreken/Leerpunten) | 6 discussion points, 2 lessons learned |
 </details>
 
 ## Responsible-AI rules (enforced in code)
@@ -127,12 +128,15 @@ AAR/
 ├── aar/
 │   ├── ingestion/   # Parsers: commander .docx, Google Form sheet, dispatch export
 │   ├── analysis/    # Extraction, reconstruction, timeline, findings, lessons
+│   ├── config/      # Settings and logging
+│   ├── db/          # Database engine and sessions
 │   ├── llm/         # Provider interface, Anthropic provider, mock, prompts
 │   ├── models/      # SQLAlchemy models
 │   ├── schemas/     # Pydantic schemas for every LLM output
 │   ├── services/    # Business logic between web layer and database
+│   ├── ui/          # Dutch display labels
 │   └── web/         # FastAPI routes and Jinja2 templates
-├── docs/images/     # Screenshots (anonymised)
+├── docs/images/     # Screenshots (fictional demo incident)
 ├── fixtures/        # Synthetic demo incident (no real data)
 ├── scripts/         # Demo runner, template generator, screenshot smoke test
 ├── templates/       # Commander report template (.docx)
@@ -140,6 +144,13 @@ AAR/
 ├── app.py
 └── requirements.txt
 ```
+
+## Adapting AAR to another team
+The domain lives in a few central files, not in the analysis pipeline:
+- `templates/`: the report template commanders fill in
+- `aar/schemas/constants.py`: categories and unit names
+- `aar/ui/labels.py`: the labels shown on screen
+- `aar/llm/prompts/`: the instructions given to the AI
 
 ## Status & next steps
 Working end to end. Currently a single-team tool (one shared login, one SQLite database). Before a wider rollout, the next steps are multi-user accounts, PostgreSQL and automated backups.
