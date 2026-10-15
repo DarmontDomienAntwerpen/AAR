@@ -14,7 +14,7 @@
 
 ![AAR: the incident summary and the reconstructed timeline with each commander's own account as the source (top), and the discussion points per commander and across commanders (bottom)](docs/images/showcase.png)
 
-*Demo incident; names, address and photos are anonymised.*
+*Fictional demo incident; no real incident data.*
 
 > **Why the interface is in Dutch:** AAR was piloted on a Belgian (Flemish) fire service example, so the user interface, the report template and the AI prompts are in Dutch, the language the commanders write their reports in. The code, documentation and tests are in English. The glossary below translates the screen terms.
 
