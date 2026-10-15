@@ -67,7 +67,7 @@ pip install -r requirements.txt
 ## 4. Environment variables
 
 ```bash
-cp .env.example .env
+cp -n .env.example .env   # -n: never overwrites an existing .env
 ```
 
 `.env` fields:

@@ -10,11 +10,13 @@
 
 > **In short:** after a major fire, each commander writes their own report. A good After Action Review (AAR) compares all of them, but in practice that is done by hand, if at all. This tool reads all the reports, rebuilds one shared timeline, and proposes discussion points, lessons and improvements. Every point links back to the exact sentence it came from. A human facilitator stays in control and has the final word.
 >
-> Built for fire services, but adaptable to any emergency service (police, EMS, civil protection) or any team that runs After Action Reviews: adapting it means changing the report template, the category labels and the prompts, which are kept in a few central files (`templates/`, `aar/schemas/constants.py`, `aar/ui/labels.py`, `aar/llm/prompts/`), not the analysis pipeline itself.
+> Built for fire services, but adaptable to any team that reviews its work together: other emergency services (police, EMS, civil protection), but also administrative, project or management teams that hold debriefs, evaluation meetings or After Action Reviews. Adapting it means changing the report template, the category labels and the prompts, which are kept in a few central files (`templates/`, `aar/schemas/constants.py`, `aar/ui/labels.py`, `aar/llm/prompts/`), not the analysis pipeline itself.
 
-![AAR: the reconstructed timeline with each commander's own words as the source (left), the incident summary and the discussion points per commander (right)](docs/images/showcase.png)
+![AAR: the incident summary and the reconstructed timeline with each commander's own account as the source (top), and the discussion points per commander and across commanders (bottom)](docs/images/showcase.png)
 
-*Synthetic demo incident. The interface is in Dutch because its users are Flemish fire officers; the code, documentation and tests are in English.*
+*Demo incident; names, address and photos are anonymised.*
+
+> **Why the interface is in Dutch:** AAR was piloted on a Belgian (Flemish) fire service example, so the user interface, the report template and the AI prompts are in Dutch, the language the commanders write their reports in. The code, documentation and tests are in English. The glossary below translates the screen terms.
 
 ---
 
@@ -71,7 +73,7 @@ Where a gap could be checked (ordering, coverage, duplication), it was closed wi
           Facilitator reviews, corrects, re-runs, finalizes
 ```
 
-The LLM sits behind a provider interface (`aar/llm/`). The default provider is a **deterministic mock**, so the whole app and test suite run without an API key. Switching to Claude only takes one environment variable.
+The LLM sits behind a provider interface (`aar/llm/`). For real analysis, AAR uses Claude. A **deterministic mock** provider is also included so the test suite and a quick demo run without an API key. The mock does not analyse anything: it only arranges the submitted text, so use Claude for real reviews.
 
 ## Tech stack
 
@@ -87,7 +89,7 @@ The LLM sits behind a provider interface (`aar/llm/`). The default provider is a
 
 ### Prerequisites
 - Python 3.11+
-- Optional: an Anthropic API key (without one the app uses the mock provider)
+- An Anthropic API key for real AI analysis (without one, only the demo mock runs)
 
 ### Installation
 ```bash
@@ -100,9 +102,9 @@ pip install -r requirements.txt
 
 ### Configuration
 ```bash
-cp .env.example .env
+cp -n .env.example .env   # -n: never overwrites an existing .env
 ```
-By default `AAR_LLM_PROVIDER=mock`. For real AI analysis, set `AAR_LLM_PROVIDER=anthropic` and fill in `ANTHROPIC_API_KEY`.
+Set `AAR_LLM_PROVIDER=anthropic` and fill in `ANTHROPIC_API_KEY` for real AI analysis. Without a key, leave `AAR_LLM_PROVIDER=mock` (demo mode, no real analysis).
 
 ### Run
 ```bash
@@ -117,7 +119,7 @@ python scripts/run_synthetic_demo.py
 ```bash
 pytest
 ```
-142 unit and integration tests, all running against the deterministic mock (no API key needed).
+145 unit and integration tests, all running against the deterministic mock (no API key needed).
 
 ## Project structure
 ```
@@ -130,7 +132,7 @@ AAR/
 │   ├── schemas/     # Pydantic schemas for every LLM output
 │   ├── services/    # Business logic between web layer and database
 │   └── web/         # FastAPI routes and Jinja2 templates
-├── docs/images/     # Screenshots (synthetic data)
+├── docs/images/     # Screenshots (anonymised)
 ├── fixtures/        # Synthetic demo incident (no real data)
 ├── scripts/         # Demo runner, template generator, screenshot smoke test
 ├── templates/       # Commander report template (.docx)
