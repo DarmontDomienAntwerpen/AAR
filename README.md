@@ -156,7 +156,7 @@ The domain lives in a few central files, not in the analysis pipeline:
 Working end to end. Currently a single-team tool (one shared login, one SQLite database). Before a wider rollout, the next steps are multi-user accounts, PostgreSQL and automated backups.
 
 ## Author
-**Domien Darmont**, AI Engineer, Antwerp, Belgium  
+**Domien Darmont** — Operational leader building applied AI systems, Antwerp, Belgium  
 GitHub: [@DomienDarmontAntwerpen](https://github.com/DomienDarmontAntwerpen)  
 LinkedIn: [Domien Darmont](https://www.linkedin.com/in/domien-darmont-b53b7640b/)
 
