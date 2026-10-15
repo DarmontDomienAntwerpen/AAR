@@ -178,3 +178,28 @@ def test_enforce_per_commander_order_resolves_genuine_conflict_via_section_rank(
 
     assert fixed[0] is event_b  # pure situation first
     assert fixed[1] is event_a
+
+
+class _PerspectiveOnlyProvider:
+    """Returns events whose observation_ids are only filled per perspective,
+    as the real model sometimes does."""
+
+    def __init__(self, report_id, obs_id):
+        self.report_id, self.obs_id = report_id, obs_id
+
+    def generate_structured(self, *, system_prompt, user_prompt, response_model):
+        return response_model.model_validate({"events": [{
+            "title": "Aankomst", "order_hint": 1, "ai_summary": "Rook bij aankomst.",
+            "perspectives": [{"commander_report_id": self.report_id,
+                              "perspective_text": "Zware rook.", "observation_ids": [self.obs_id]}],
+        }]})
+
+
+def test_reconstruction_fills_event_observation_ids_from_perspectives(session, sample_incident):
+    r1 = _make_report(session, sample_incident, "P12")
+    obs = _add_observation(session, sample_incident, r1, "Zware rook zichtbaar bij aankomst.", ObservationCategory.OBSERVATION)
+
+    run_reconstruction(session, sample_incident, _PerspectiveOnlyProvider(r1.id, obs.id))
+
+    event = session.query(IncidentEvent).filter_by(incident_id=sample_incident.id).one()
+    assert event.observation_ids == [obs.id]

@@ -261,6 +261,17 @@ def run_reconstruction(
         logger.error("Reconstruction failed for incident %s: %s", incident.id, exc)
         raise
 
+    # An event's observations always include its perspectives' observations.
+    # The model sometimes fills observation_ids only per perspective and
+    # leaves the event-level list empty; the per-commander ordering below and
+    # the narrative stage both read the event-level list, so an empty one made
+    # the narrative report "no incident moments" despite a full timeline.
+    for reconstructed in result.events:
+        merged = list(reconstructed.observation_ids)
+        for perspective in reconstructed.perspectives:
+            merged.extend(oid for oid in perspective.observation_ids if oid not in merged)
+        reconstructed.observation_ids = merged
+
     # Re-analysis: drop previous AI-generated events, keep facilitator-added ones.
     old_events = (
         session.query(IncidentEvent)
