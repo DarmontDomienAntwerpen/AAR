@@ -2,7 +2,7 @@
 with Playwright and saves a screenshot of each. Proves the pages actually
 render correctly (not just that they return HTTP 200).
 
-Requires the app to already be running (see HANDOFF.md §5) with the
+Requires the app to already be running (see README.md, Getting started) with the
 synthetic demo incident loaded (`python scripts/run_synthetic_demo.py`).
 Playwright is not a project dependency — install it separately:
 

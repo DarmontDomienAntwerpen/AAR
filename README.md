@@ -141,10 +141,6 @@ AAR/
 └── requirements.txt
 ```
 
-More documentation:
-- [HANDOFF.md](HANDOFF.md): installation, configuration and operation in detail
-- [PROJECT_STATE.md](PROJECT_STATE.md): design decisions and full change history
-
 ## Status & next steps
 Working end to end. Currently a single-team tool (one shared login, one SQLite database). Before a wider rollout, the next steps are multi-user accounts, PostgreSQL and automated backups.
 

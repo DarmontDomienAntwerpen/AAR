@@ -21,3 +21,7 @@ data/*.db.bak*
 data/uploads/
 data/.session_secret
 scripts/screenshots/
+
+# Private working notes (kept locally, not published)
+HANDOFF.md
+PROJECT_STATE.md

@@ -17,7 +17,7 @@ reach and are explicitly marked UNVERIFIED here rather than faked:
 
 Both require a real LLM (AnthropicProvider) to verify — see
 `test_synthetic_incident_conditions_c_and_e_require_real_provider` below,
-and HANDOFF.md for how to run this fixture with a real API key.
+and README.md for how to run this fixture with a real API key.
 """
 from __future__ import annotations
 
@@ -248,8 +248,8 @@ def test_synthetic_incident_conditions_c_and_e_require_real_provider():
     the unlabelled-positive rescue coordination (condition E). Verify these
     manually by setting AAR_LLM_PROVIDER=anthropic and ANTHROPIC_API_KEY in
     .env, then re-running this fixture through the Streamlit UI or
-    `run_analysis` directly with AnthropicProvider — see HANDOFF.md."""
+    `run_analysis` directly with AnthropicProvider — see README.md."""
     pytest.skip(
         "UNVERIFIED with the mock provider by design — requires AnthropicProvider "
-        "and a real ANTHROPIC_API_KEY; see docstring and HANDOFF.md."
+        "and a real ANTHROPIC_API_KEY; see docstring and README.md."
     )

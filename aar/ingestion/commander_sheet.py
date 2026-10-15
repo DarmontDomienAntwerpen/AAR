@@ -15,7 +15,7 @@ which front end a given report came from.
 Column matching is by normalised header prefix, not exact position — mirrors
 dispatch_excel.py's synonym-based approach, adapted to columns instead of
 rows. The exact question titles a facilitator should use when building the
-Google Form are the same text as these prefixes (see HANDOFF.md)."""
+Google Form are the same text as these prefixes (defined below)."""
 from __future__ import annotations
 
 import re
