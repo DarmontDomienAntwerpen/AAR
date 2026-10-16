@@ -158,7 +158,7 @@ Working end to end. Currently a single-team tool (one shared login, one SQLite d
 ## Author
 **Domien Darmont** — Operational leader building applied AI systems, Antwerp, Belgium  
 GitHub: [@DomienDarmontAntwerpen](https://github.com/DomienDarmontAntwerpen)  
-LinkedIn: [Domien Darmont](https://www.linkedin.com/in/domien-darmont-b53b7640b/)
+LinkedIn: [Domien Darmont](https://www.linkedin.com/in/domiendarmont/)
 
 A live demo, the project presentation or answers to any questions are available on request.
 
